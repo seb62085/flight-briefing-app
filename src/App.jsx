@@ -45,6 +45,7 @@ function parseMelItems(text) {
     note: match[4].trim(),
   }))
 }
+
 function calculateAlternatePlusReserve(alternateFuel) {
   const numericFuel = Number(alternateFuel)
 
@@ -81,10 +82,10 @@ function parseFuelSection(text) {
       /ALTN\s+(\d+)\s+\d{4}\s+[A-Z]{4}/i,
     ]),
     alternatePlusReserve: calculateAlternatePlusReserve(
-  findMatch(fuelSection, [
-    /ALTN\s+(\d+)\s+\d{4}\s+[A-Z]{4}/i,
-  ]),
-),
+      findMatch(fuelSection, [
+        /ALTN\s+(\d+)\s+\d{4}\s+[A-Z]{4}/i,
+      ]),
+    ),
     reserveFuel: findMatch(fuelSection, [
       /RESV\s+(\d+)\s+(\d+)\s+TOF/i,
     ]),
@@ -139,7 +140,58 @@ function parseFuelSection(text) {
   }
 }
 
+function parseRouteSection(text) {
+  const route = findMatch(text, [
+    /(-N\d{4}F\d{3}.*?)(?=\s+-{5,}\s+-{5,}\s+WIND)/i,
+  ])
 
+  if (route === 'Not found') {
+    return null
+  }
+
+  const routeDetailMatch = text.match(
+    /-{5,}\s+-{5,}\s+WIND\s+([MP]\d{3})\s+MXSH\s+([0-9]+\/[A-Z0-9]+)/i,
+  )
+
+  return {
+    route,
+    wind: routeDetailMatch ? routeDetailMatch[1].trim() : 'Not found',
+    maxShear: routeDetailMatch ? routeDetailMatch[2].trim() : 'Not found',
+  }
+}
+
+function parseCrewSection(text) {
+  const crewSection = findMatch(text, [
+    /WIND\s+[MP]\d{3}\s+MXSH\s+[0-9]+\/[A-Z0-9]+\s+(.*?)(?=\s+---\s+FLIGHT LEVEL CALCULATION)/i,
+  ])
+
+  if (crewSection === 'Not found') {
+    return null
+  }
+
+  const crewMembers = [
+    ...crewSection.matchAll(
+      /\b(CPT|FO|LM|MX|J\/S)\s+([A-Z][A-Z\s]+?)\s+(?:[A-Z]{1,4}\s+)?(\d{4,6})(?=\s+(?:CPT|FO|LM|MX|J\/S)\b|$)/gi,
+    ),
+  ].map((match) => ({
+    role: match[1].toUpperCase(),
+    name: match[2].replace(/\s+/g, ' ').trim(),
+    employeeNumber: match[3].trim(),
+  }))
+
+  if (crewMembers.length === 0) {
+    return null
+  }
+
+  return {
+    members: crewMembers,
+    captains: crewMembers.filter((member) => member.role === 'CPT'),
+    firstOfficers: crewMembers.filter((member) => member.role === 'FO'),
+    loadmasters: crewMembers.filter((member) => member.role === 'LM'),
+    maintenance: crewMembers.filter((member) => member.role === 'MX'),
+    jumpseaters: crewMembers.filter((member) => member.role === 'J/S'),
+  }
+}
 
 function parseFlightPlan(text) {
   const normalizedText = text.replace(/\s+/g, ' ')
@@ -189,6 +241,8 @@ function parseFlightPlan(text) {
     alternateEta: alternateDetails ? alternateDetails[2].trim() : 'Not found',
     melItems: parseMelItems(normalizedText),
     fuel: parseFuelSection(normalizedText),
+    route: parseRouteSection(normalizedText),
+    crew: parseCrewSection(normalizedText),
   }
 }
 
@@ -319,113 +373,172 @@ function App() {
         )}
 
         {summary?.fuel && (
-  <section className="fuel-card">
-    <h2>Fuel Summary</h2>
+          <section className="fuel-card">
+            <h2>Fuel Summary</h2>
 
-    <div className="fuel-flags">
-      <div>
-        <span>B043</span>
-        <strong>{summary.fuel.isB043}</strong>
-      </div>
-      <div>
-        <span>B044 / Redispatch</span>
-        <strong>{summary.fuel.isB044Redispatch}</strong>
-      </div>
-    </div>
+            <div className="fuel-flags">
+              <div>
+                <span>B043</span>
+                <strong>{summary.fuel.isB043}</strong>
+              </div>
+              <div>
+                <span>B044 / Redispatch</span>
+                <strong>{summary.fuel.isB044Redispatch}</strong>
+              </div>
+            </div>
 
-    <div className="fuel-columns">
-      <div className="fuel-column">
-        <div>
-          <span>Burn</span>
-          <strong>{summary.fuel.burn}</strong>
-          <em>{summary.fuel.flightTime}</em>
-        </div>
-        <div className="fuel-pair">
-  <div>
-    <span>ALTN</span>
-    <strong>{summary.fuel.alternateFuel}</strong>
-  </div>
-  <div>
-    <span>ALTN + 7.5</span>
-    <strong>{summary.fuel.alternatePlusReserve}</strong>
-  </div>
-</div>
-        <div>
-          <span>Reserve</span>
-          <strong>{summary.fuel.reserveFuel}</strong>
-          <em>{summary.fuel.reserveMinutes} min</em>
-        </div>
-        <div>
-          <span>Reserve 2</span>
-          <strong>{summary.fuel.secondReserveFuel}</strong>
-        </div>
-        <div>
-          <span>Additional</span>
-          <strong>{summary.fuel.additionalFuel}</strong>
-          <em>{summary.fuel.additionalTime}</em>
-        </div>
-        <div>
-          <span>Ballast</span>
-          <strong>{summary.fuel.ballast}</strong>
-        </div>
-      </div>
+            <div className="fuel-columns">
+              <div className="fuel-column">
+                <div>
+                  <span>Burn</span>
+                  <strong>{summary.fuel.burn}</strong>
+                  <em>{summary.fuel.flightTime}</em>
+                </div>
+                <div className="fuel-pair">
+                  <div>
+                    <span>ALTN</span>
+                    <strong>{summary.fuel.alternateFuel}</strong>
+                  </div>
+                  <div>
+                    <span>ALTN + 7.5</span>
+                    <strong>{summary.fuel.alternatePlusReserve}</strong>
+                  </div>
+                </div>
+                <div>
+                  <span>Reserve</span>
+                  <strong>{summary.fuel.reserveFuel}</strong>
+                  <em>{summary.fuel.reserveMinutes} min</em>
+                </div>
+                <div>
+                  <span>Reserve 2</span>
+                  <strong>{summary.fuel.secondReserveFuel}</strong>
+                </div>
+                <div>
+                  <span>Additional</span>
+                  <strong>{summary.fuel.additionalFuel}</strong>
+                  <em>{summary.fuel.additionalTime}</em>
+                </div>
+                <div>
+                  <span>Ballast</span>
+                  <strong>{summary.fuel.ballast}</strong>
+                </div>
+              </div>
 
-      <div className="fuel-column">
-        <div>
-          <span>Payload</span>
-          <strong>{summary.fuel.payload}</strong>
-        </div>
-        <div>
-          <span>ZFW</span>
-          <strong>{summary.fuel.zeroFuelWeight}</strong>
-        </div>
-        <div>
-          <span>TOW</span>
-          <strong>{summary.fuel.takeoffWeight}</strong>
-        </div>
-        <div>
-          <span>ELW</span>
-          <strong>{summary.fuel.estimatedLandingWeight}</strong>
-        </div>
-        <div>
-          <span>RCMD AF</span>
-          <strong>{summary.fuel.recommendedArrivalFuel}</strong>
-        </div>
-      </div>
-    </div>
+              <div className="fuel-column">
+                <div>
+                  <span>Payload</span>
+                  <strong>{summary.fuel.payload}</strong>
+                </div>
+                <div>
+                  <span>ZFW</span>
+                  <strong>{summary.fuel.zeroFuelWeight}</strong>
+                </div>
+                <div>
+                  <span>TOW</span>
+                  <strong>{summary.fuel.takeoffWeight}</strong>
+                </div>
+                <div>
+                  <span>ELW</span>
+                  <strong>{summary.fuel.estimatedLandingWeight}</strong>
+                </div>
+                <div>
+                  <span>RCMD AF</span>
+                  <strong>{summary.fuel.recommendedArrivalFuel}</strong>
+                </div>
+              </div>
+            </div>
 
-    <div className="fuel-total-row">
-      <div>
-        <span>Required</span>
-        <strong>{summary.fuel.requiredFuel}</strong>
-      </div>
-      <div>
-        <span>Taxi</span>
-        <strong>{summary.fuel.taxiFuel}</strong>
-      </div>
-      <div>
-        <span>Extra</span>
-        <strong>{summary.fuel.extraFuel}</strong>
-      </div>
-      <div>
-        <span>Total</span>
-        <strong>{summary.fuel.totalFuel}</strong>
-      </div>
-    </div>
+            <div className="fuel-total-row">
+              <div>
+                <span>Required</span>
+                <strong>{summary.fuel.requiredFuel}</strong>
+              </div>
+              <div>
+                <span>Taxi</span>
+                <strong>{summary.fuel.taxiFuel}</strong>
+              </div>
+              <div>
+                <span>Extra</span>
+                <strong>{summary.fuel.extraFuel}</strong>
+              </div>
+              <div>
+                <span>Total</span>
+                <strong>{summary.fuel.totalFuel}</strong>
+              </div>
+            </div>
 
-    <div className="fuel-footer-row">
-  <div>
-    <span>Distance</span>
-    <strong>{summary.fuel.distance}</strong>
-  </div>
-  <div>
-    <span>Fuel Bias</span>
-    <strong>{summary.fuel.fuelBias}</strong>
-  </div>
-</div>
-  </section>
-)}
+            <div className="fuel-footer-row">
+              <div>
+                <span>Distance</span>
+                <strong>{summary.fuel.distance}</strong>
+              </div>
+              <div>
+                <span>Fuel Bias</span>
+                <strong>{summary.fuel.fuelBias}</strong>
+              </div>
+            </div>
+          </section>
+        )}
 
+        {summary?.route && (
+          <section className="route-card">
+            <div className="route-header">
+              <h2>Route Summary</h2>
+              <div>
+                <span>Wind</span>
+                <strong>{summary.route.wind}</strong>
+              </div>
+              <div>
+                <span>MXSH</span>
+                <strong>{summary.route.maxShear}</strong>
+              </div>
+            </div>
+
+            <p>{summary.route.route}</p>
+          </section>
+        )}
+
+        {summary?.crew && (
+          <section className="crew-card">
+            <h2>Crew</h2>
+
+            <div className="crew-columns">
+              <div className="crew-manifest">
+                <h3>Flight Crew</h3>
+                {summary.crew.members
+                  .filter((member) => member.role === 'CPT' || member.role === 'FO')
+                  .map((member) => (
+                    <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
+                      <span>{member.role}</span>
+                      <strong>{member.name}</strong>
+                      <em>{member.employeeNumber}</em>
+                    </div>
+                  ))}
+              </div>
+
+              <div className="crew-manifest">
+                <h3>Other Crew</h3>
+                {summary.crew.members
+                  .filter((member) => member.role !== 'CPT' && member.role !== 'FO')
+                  .map((member) => (
+                    <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
+                      <span>{member.role}</span>
+                      <strong>{member.name}</strong>
+                      <em>{member.employeeNumber}</em>
+                    </div>
+                  ))}
+
+                {summary.crew.jumpseaters.length === 0 && (
+                  <div className="crew-row is-empty">
+                    <span>J/S</span>
+                    <strong>None listed</strong>
+                    <em></em>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         {summary?.melItems?.length > 0 && (
           <section className="mel-list">
