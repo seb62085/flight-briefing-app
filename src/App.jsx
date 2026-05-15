@@ -101,6 +101,8 @@ function App() {
   const [pdfText, setPdfText] = useState('')
   const [status, setStatus] = useState('Choose a PDF flight plan to begin.')
   const [summary, setSummary] = useState(null)
+  const [showExtractedText, setShowExtractedText] = useState(false)
+
 
   async function handleFileChange(event) {
     const file = event.target.files[0]
@@ -112,6 +114,7 @@ function App() {
     setFileName(file.name)
     setPdfText('')
     setSummary(null)
+    setShowExtractedText(false)
     setStatus('Reading PDF...')
 
     try {
@@ -248,10 +251,17 @@ function App() {
 )}
 
 
-        {pdfText && (
+         {pdfText && (
           <section className="text-preview">
-            <h2>Extracted PDF Text</h2>
-            <pre>{pdfText}</pre>
+            <button
+              type="button"
+              className="text-toggle"
+              onClick={() => setShowExtractedText((currentValue) => !currentValue)}
+            >
+              {showExtractedText ? 'Hide extracted text' : 'Show extracted text'}
+            </button>
+
+            {showExtractedText && <pre>{pdfText}</pre>}
           </section>
         )}
       </section>

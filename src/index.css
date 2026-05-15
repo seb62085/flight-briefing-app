@@ -10,3 +10,17 @@ button,
 input {
   font: inherit;
 }
+.text-toggle {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: #17212b;
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.text-toggle:hover {
+  background: #253545;
+}
