@@ -33,6 +33,47 @@ h1 {
   font-size: 38px;
 }
 
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 24px;
+  padding: 6px;
+  background: #eef3f6;
+  border: 1px solid #d8e0e7;
+  border-radius: 8px;
+}
+
+.tabs button {
+  padding: 10px 12px;
+  background: transparent;
+  color: #465666;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tabs button.active {
+  background: white;
+  color: #17212b;
+  box-shadow: 0 1px 4px rgba(23, 33, 43, 0.12);
+}
+
+.tab-panel {
+  margin-top: 20px;
+}
+
+.empty-state {
+  margin: 0;
+  padding: 18px;
+  background: #f8fbfd;
+  border: 1px solid #d8e0e7;
+  border-radius: 8px;
+  color: #465666;
+  font-weight: 700;
+}
+
 .intro {
   font-size: 18px;
   line-height: 1.5;
@@ -70,6 +111,10 @@ h1 {
   font-weight: 700;
 }
 
+.status.success {
+  color: #1d6b4f;
+}
+
 .text-preview {
   margin-top: 24px;
 }
@@ -102,10 +147,68 @@ h1 {
   margin: 0 0 10px;
   font-size: 20px;
 }
+
+.lm-chit-card {
+  margin-top: 0;
+  padding: 14px;
+  background: #f8fbfd;
+  border: 1px solid #d8e0e7;
+  border-radius: 8px;
+}
+
+.lm-chit-card h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.lm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lm-grid div,
+.lm-grid label {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  background: white;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+}
+
+.lm-grid span {
+  color: #5c6b78;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.lm-grid strong {
+  color: #17212b;
+  font-size: 18px;
+}
+
+.lm-grid input {
+  min-width: 0;
+  color: #17212b;
+  font-size: 18px;
+  font-weight: 700;
+  border: 0;
+  border-bottom: 2px solid #7aa7bd;
+  outline: none;
+  padding: 2px 0;
+}
+
+.lm-grid input::placeholder {
+  color: #98a5b1;
+  font-weight: 400;
+}
+
 .briefing-summary {
   display: grid;
   gap: 14px;
-  margin-top: 24px;
+  margin-top: 0;
 }
 
 .admin-strip,
@@ -549,6 +652,11 @@ h1 {
 }
 
 @media (max-width: 760px) {
+  .tabs,
+  .lm-grid {
+    grid-template-columns: 1fr;
+  }
+
   .fak-header {
     grid-template-columns: 1fr;
   }

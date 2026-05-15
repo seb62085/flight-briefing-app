@@ -137,6 +137,9 @@ function parseFuelSection(text) {
     fuelBias: findMatch(fuelSection, [
       /FUEL\s+BIAS:\s*([+-]?\d+(?:\.\d+)?)/i,
     ]),
+    pic: findMatch(fuelSection, [
+      /CAPT:\s+([A-Z\s]+?)\s+CAPT SIGNATURE/i,
+    ]),
   }
 }
 
@@ -185,6 +188,7 @@ function parseCrewSection(text) {
 
   return {
     members: crewMembers,
+    sob: crewMembers.length,
     captains: crewMembers.filter((member) => member.role === 'CPT'),
     firstOfficers: crewMembers.filter((member) => member.role === 'FO'),
     loadmasters: crewMembers.filter((member) => member.role === 'LM'),
@@ -289,6 +293,9 @@ function App() {
   const [status, setStatus] = useState('Choose a PDF flight plan to begin.')
   const [summary, setSummary] = useState(null)
   const [showExtractedText, setShowExtractedText] = useState(false)
+  const [activeTab, setActiveTab] = useState('home')
+  const [density, setDensity] = useState('')
+  const [pic, setPic] = useState('')
 
   async function handleFileChange(event) {
     const file = event.target.files[0]
@@ -316,8 +323,10 @@ function App() {
       }
 
       const extractedText = pages.join('\n\n')
+      const parsedSummary = parseFlightPlan(extractedText)
       setPdfText(extractedText)
-      setSummary(parseFlightPlan(extractedText))
+      setSummary(parsedSummary)
+      setPic(parsedSummary.fuel?.pic === 'Not found' ? '' : parsedSummary.fuel?.pic ?? '')
       setStatus(`Read ${pdf.numPages} page(s) from the PDF.`)
     } catch (error) {
       console.error(error)
@@ -330,315 +339,384 @@ function App() {
       <section className="briefing-panel">
         <p className="eyebrow">Flight Plan Parser</p>
         <h1>Flight Briefing App</h1>
-        <p className="intro">
-          Upload a PDF flight plan and this app will extract the raw text first.
-          After that, we will teach it how to find the important briefing details.
-        </p>
 
-        <label className="upload-box">
-          <span>Choose a PDF flight plan</span>
-          <input type="file" accept="application/pdf" onChange={handleFileChange} />
-        </label>
-
-        {fileName && (
-          <div className="file-card">
-            <strong>Selected file:</strong>
-            <span>{fileName}</span>
-          </div>
-        )}
-
-        <p className="status">{status}</p>
-
-        {summary && (
-          <section className="briefing-summary">
-            <div className="admin-strip">
-              <div>
-                <span>Plan</span>
-                <strong>{summary.plan}</strong>
-              </div>
-              <div>
-                <span>Trip</span>
-                <strong>{summary.trip}</strong>
-              </div>
-              <div>
-                <span>Compute</span>
-                <strong>{summary.computeTime}</strong>
-              </div>
-              <div>
-                <span>Revision</span>
-                <strong>{summary.revision}</strong>
-              </div>
-              <div>
-                <span>Dispatcher</span>
-                <strong>{summary.dispatcher}</strong>
-              </div>
-            </div>
-
-            <div className="flight-strip">
-              <div>
-                <span>Date</span>
-                <strong>{summary.date}</strong>
-              </div>
-              <div>
-                <span>Flight</span>
-                <strong>{summary.flight}</strong>
-              </div>
-              <div>
-                <span>Registration</span>
-                <strong>{summary.aircraftRegistration}</strong>
-              </div>
-            </div>
-
-            <div className="airport-grid">
-              <article>
-                <span>Origin</span>
-                <strong>{summary.origin}</strong>
-                <em>ETD {summary.etd}</em>
-              </article>
-              <article>
-                <span>Destination</span>
-                <strong>{summary.destination}</strong>
-                <em>ETA {summary.eta}</em>
-              </article>
-              <article>
-                <span>Alternate</span>
-                <strong>{summary.alternate}</strong>
-                <em>ETA {summary.alternateEta}</em>
-              </article>
-            </div>
-          </section>
-        )}
-
-        {summary?.fuel && (
-          <section className="fuel-card">
-            <h2>Fuel Summary</h2>
-
-            <div className="fuel-flags">
-              <div>
-                <span>B043</span>
-                <strong>{summary.fuel.isB043}</strong>
-              </div>
-              <div>
-                <span>B044 / Redispatch</span>
-                <strong>{summary.fuel.isB044Redispatch}</strong>
-              </div>
-            </div>
-
-            <div className="fuel-columns">
-              <div className="fuel-column">
-                <div>
-                  <span>Burn</span>
-                  <strong>{summary.fuel.burn}</strong>
-                  <em>{summary.fuel.flightTime}</em>
-                </div>
-                <div className="fuel-pair">
-                  <div>
-                    <span>ALTN</span>
-                    <strong>{summary.fuel.alternateFuel}</strong>
-                  </div>
-                  <div>
-                    <span>ALTN + 7.5</span>
-                    <strong>{summary.fuel.alternatePlusReserve}</strong>
-                  </div>
-                </div>
-                <div>
-                  <span>Reserve</span>
-                  <strong>{summary.fuel.reserveFuel}</strong>
-                  <em>{summary.fuel.reserveMinutes} min</em>
-                </div>
-                <div>
-                  <span>Reserve 2</span>
-                  <strong>{summary.fuel.secondReserveFuel}</strong>
-                </div>
-                <div>
-                  <span>Additional</span>
-                  <strong>{summary.fuel.additionalFuel}</strong>
-                  <em>{summary.fuel.additionalTime}</em>
-                </div>
-                <div>
-                  <span>Ballast</span>
-                  <strong>{summary.fuel.ballast}</strong>
-                </div>
-              </div>
-
-              <div className="fuel-column">
-                <div>
-                  <span>Payload</span>
-                  <strong>{summary.fuel.payload}</strong>
-                </div>
-                <div>
-                  <span>ZFW</span>
-                  <strong>{summary.fuel.zeroFuelWeight}</strong>
-                </div>
-                <div>
-                  <span>TOW</span>
-                  <strong>{summary.fuel.takeoffWeight}</strong>
-                </div>
-                <div>
-                  <span>ELW</span>
-                  <strong>{summary.fuel.estimatedLandingWeight}</strong>
-                </div>
-                <div>
-                  <span>RCMD AF</span>
-                  <strong>{summary.fuel.recommendedArrivalFuel}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="fuel-total-row">
-              <div>
-                <span>Required</span>
-                <strong>{summary.fuel.requiredFuel}</strong>
-              </div>
-              <div>
-                <span>Taxi</span>
-                <strong>{summary.fuel.taxiFuel}</strong>
-              </div>
-              <div>
-                <span>Extra</span>
-                <strong>{summary.fuel.extraFuel}</strong>
-              </div>
-              <div>
-                <span>Total</span>
-                <strong>{summary.fuel.totalFuel}</strong>
-              </div>
-            </div>
-
-            <div className="fuel-footer-row">
-              <div>
-                <span>Distance</span>
-                <strong>{summary.fuel.distance}</strong>
-              </div>
-              <div>
-                <span>Fuel Bias</span>
-                <strong>{summary.fuel.fuelBias}</strong>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {summary?.route && (
-          <section className="route-card">
-            <div className="route-header">
-              <h2>Route Summary</h2>
-              <div>
-                <span>Wind</span>
-                <strong>{summary.route.wind}</strong>
-              </div>
-              <div>
-                <span>MXSH</span>
-                <strong>{summary.route.maxShear}</strong>
-              </div>
-            </div>
-
-            <p>{summary.route.route}</p>
-          </section>
-        )}
-
-        {summary?.crew && (
-          <section className="crew-card">
-            <h2>Crew</h2>
-
-            <div className="crew-columns">
-              <div className="crew-manifest">
-                <h3>Flight Crew</h3>
-                {summary.crew.members
-                  .filter((member) => member.role === 'CPT' || member.role === 'FO')
-                  .map((member) => (
-                    <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
-                      <span>{member.role}</span>
-                      <strong>{member.name}</strong>
-                      <em>{member.employeeNumber}</em>
-                    </div>
-                  ))}
-              </div>
-
-              <div className="crew-manifest">
-                <h3>Other Crew</h3>
-                {summary.crew.members
-                  .filter((member) => member.role !== 'CPT' && member.role !== 'FO')
-                  .map((member) => (
-                    <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
-                      <span>{member.role}</span>
-                      <strong>{member.name}</strong>
-                      <em>{member.employeeNumber}</em>
-                    </div>
-                  ))}
-
-                {summary.crew.jumpseaters.length === 0 && (
-                  <div className="crew-row is-empty">
-                    <span>J/S</span>
-                    <strong>None listed</strong>
-                    <em></em>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {summary?.fakWeights && (
-          <section className="fak-card">
-            <div className="fak-header">
-              <h2>FAK Weights</h2>
-              <div>
-                <span>Total</span>
-                <strong>{summary.fakWeights.total} KGS</strong>
-              </div>
-            </div>
-
-            <div className="fak-list">
-              {summary.fakWeights.items.map((item) => (
-                <div className="fak-row" key={`${item.label}-${item.weight}`}>
-                  <span>{item.label}</span>
-                  <strong>{item.weight} KGS</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {summary?.melItems?.length > 0 && (
-          <section className="mel-list">
-            <h2>Planned MEL Items</h2>
-
-            {summary.melItems.map((item) => (
-              <article className="mel-card" key={`${item.melNumber}-${item.dmiNumber}`}>
-                <div className="mel-meta">
-                  <div>
-                    <span>MEL</span>
-                    <strong>{item.melNumber}</strong>
-                  </div>
-                  <div>
-                    <span>DMI</span>
-                    <strong>{item.dmiNumber}</strong>
-                  </div>
-                  <div>
-                    <span>Expires</span>
-                    <strong>{item.expiryDate}</strong>
-                  </div>
-                </div>
-                <p>{item.note}</p>
-              </article>
-            ))}
-          </section>
-        )}
-
-        {pdfText && (
-          <section className="text-preview">
+        <nav className="tabs" aria-label="Briefing sections">
+          {[
+            ['home', 'Upload'],
+            ['summary', 'Summary'],
+            ['route', 'Route'],
+            ['lmChit', 'LM Chit'],
+          ].map(([tabId, label]) => (
             <button
               type="button"
-              className="text-toggle"
-              onClick={() => setShowExtractedText((currentValue) => !currentValue)}
+              className={activeTab === tabId ? 'active' : ''}
+              key={tabId}
+              onClick={() => setActiveTab(tabId)}
             >
-              {showExtractedText ? 'Hide extracted text' : 'Show extracted text'}
+              {label}
             </button>
+          ))}
+        </nav>
 
-            {showExtractedText && <pre>{pdfText}</pre>}
+        {activeTab === 'home' && (
+          <section className="tab-panel">
+            <label className="upload-box">
+              <span>Choose a PDF flight plan</span>
+              <input type="file" accept="application/pdf" onChange={handleFileChange} />
+            </label>
+
+            {fileName && (
+              <div className="file-card">
+                <strong>Selected file:</strong>
+                <span>{fileName}</span>
+              </div>
+            )}
+
+            <p className={summary ? 'status success' : 'status'}>{status}</p>
+
+            {pdfText && (
+              <section className="text-preview">
+                <button
+                  type="button"
+                  className="text-toggle"
+                  onClick={() => setShowExtractedText((currentValue) => !currentValue)}
+                >
+                  {showExtractedText ? 'Hide extracted text' : 'Show extracted text'}
+                </button>
+
+                {showExtractedText && <pre>{pdfText}</pre>}
+              </section>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'summary' && (
+          <section className="tab-panel">
+            {!summary && <p className="empty-state">Upload a PDF on the Home tab first.</p>}
+
+            {summary && (
+              <>
+                <section className="briefing-summary">
+                  <div className="admin-strip">
+                    <div>
+                      <span>Plan</span>
+                      <strong>{summary.plan}</strong>
+                    </div>
+                    <div>
+                      <span>Trip</span>
+                      <strong>{summary.trip}</strong>
+                    </div>
+                    <div>
+                      <span>Compute</span>
+                      <strong>{summary.computeTime}</strong>
+                    </div>
+                    <div>
+                      <span>Revision</span>
+                      <strong>{summary.revision}</strong>
+                    </div>
+                    <div>
+                      <span>Dispatcher</span>
+                      <strong>{summary.dispatcher}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flight-strip">
+                    <div>
+                      <span>Date</span>
+                      <strong>{summary.date}</strong>
+                    </div>
+                    <div>
+                      <span>Flight</span>
+                      <strong>{summary.flight}</strong>
+                    </div>
+                    <div>
+                      <span>Registration</span>
+                      <strong>{summary.aircraftRegistration}</strong>
+                    </div>
+                  </div>
+
+                  <div className="airport-grid">
+                    <article>
+                      <span>Origin</span>
+                      <strong>{summary.origin}</strong>
+                      <em>ETD {summary.etd}</em>
+                    </article>
+                    <article>
+                      <span>Destination</span>
+                      <strong>{summary.destination}</strong>
+                      <em>ETA {summary.eta}</em>
+                    </article>
+                    <article>
+                      <span>Alternate</span>
+                      <strong>{summary.alternate}</strong>
+                      <em>ETA {summary.alternateEta}</em>
+                    </article>
+                  </div>
+                </section>
+
+                {summary.fuel && <FuelCard fuel={summary.fuel} />}
+                {summary.crew && <CrewCard crew={summary.crew} />}
+              </>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'route' && (
+          <section className="tab-panel">
+            {!summary?.route && <p className="empty-state">No route data parsed yet.</p>}
+
+            {summary?.route && (
+              <section className="route-card">
+                <div className="route-header">
+                  <h2>Route Summary</h2>
+                  <div>
+                    <span>Wind</span>
+                    <strong>{summary.route.wind}</strong>
+                  </div>
+                  <div>
+                    <span>MXSH</span>
+                    <strong>{summary.route.maxShear}</strong>
+                  </div>
+                </div>
+
+                <p>{summary.route.route}</p>
+              </section>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'lmChit' && (
+          <section className="tab-panel">
+            {!summary && <p className="empty-state">Upload a PDF on the Home tab first.</p>}
+
+            {summary && (
+              <>
+                <section className="lm-chit-card">
+                  <h2>LM Chit</h2>
+
+                  <div className="lm-grid">
+                    <div>
+                      <span>Burn</span>
+                      <strong>{summary.fuel?.burn ?? 'Not found'}</strong>
+                    </div>
+                    <div>
+                      <span>Taxi</span>
+                      <strong>{summary.fuel?.taxiFuel ?? 'Not found'}</strong>
+                    </div>
+                    <label>
+                      <span>PIC</span>
+                      <input
+                        type="text"
+                        value={pic}
+                        onChange={(event) => setPic(event.target.value)}
+                        placeholder="Enter PIC"
+                      />
+                    </label>
+                    <div>
+                      <span>Payload</span>
+                      <strong>{summary.fuel?.payload ?? 'Not found'}</strong>
+                    </div>
+                    <label>
+                      <span>Density</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={density}
+                        onChange={(event) => setDensity(event.target.value)}
+                        placeholder="Enter density"
+                      />
+                    </label>
+                    <div>
+                      <span>RF</span>
+                      <strong>{summary.fuel?.totalFuel ?? 'Not found'}</strong>
+                    </div>
+                    <div>
+                      <span>SOB</span>
+                      <strong>{summary.crew?.sob ?? 'Not found'}</strong>
+                    </div>
+                  </div>
+                </section>
+
+                {summary.fakWeights && (
+                  <section className="fak-card">
+                    <div className="fak-header">
+                      <h2>FAK Weights</h2>
+                      <div>
+                        <span>Total</span>
+                        <strong>{summary.fakWeights.total} KGS</strong>
+                      </div>
+                    </div>
+
+                    <div className="fak-list">
+                      {summary.fakWeights.items.map((item) => (
+                        <div className="fak-row" key={`${item.label}-${item.weight}`}>
+                          <span>{item.label}</span>
+                          <strong>{item.weight} KGS</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
           </section>
         )}
       </section>
     </main>
+  )
+}
+
+function FuelCard({ fuel }) {
+  return (
+    <section className="fuel-card">
+      <h2>Fuel Summary</h2>
+
+      <div className="fuel-flags">
+        <div>
+          <span>B043</span>
+          <strong>{fuel.isB043}</strong>
+        </div>
+        <div>
+          <span>B044 / Redispatch</span>
+          <strong>{fuel.isB044Redispatch}</strong>
+        </div>
+      </div>
+
+      <div className="fuel-columns">
+        <div className="fuel-column">
+          <div>
+            <span>Burn</span>
+            <strong>{fuel.burn}</strong>
+            <em>{fuel.flightTime}</em>
+          </div>
+          <div className="fuel-pair">
+            <div>
+              <span>ALTN</span>
+              <strong>{fuel.alternateFuel}</strong>
+            </div>
+            <div>
+              <span>ALTN + 7.5</span>
+              <strong>{fuel.alternatePlusReserve}</strong>
+            </div>
+          </div>
+          <div>
+            <span>Reserve</span>
+            <strong>{fuel.reserveFuel}</strong>
+            <em>{fuel.reserveMinutes} min</em>
+          </div>
+          <div>
+            <span>Reserve 2</span>
+            <strong>{fuel.secondReserveFuel}</strong>
+          </div>
+          <div>
+            <span>Additional</span>
+            <strong>{fuel.additionalFuel}</strong>
+            <em>{fuel.additionalTime}</em>
+          </div>
+          <div>
+            <span>Ballast</span>
+            <strong>{fuel.ballast}</strong>
+          </div>
+        </div>
+
+        <div className="fuel-column">
+          <div>
+            <span>Payload</span>
+            <strong>{fuel.payload}</strong>
+          </div>
+          <div>
+            <span>ZFW</span>
+            <strong>{fuel.zeroFuelWeight}</strong>
+          </div>
+          <div>
+            <span>TOW</span>
+            <strong>{fuel.takeoffWeight}</strong>
+          </div>
+          <div>
+            <span>ELW</span>
+            <strong>{fuel.estimatedLandingWeight}</strong>
+          </div>
+          <div>
+            <span>RCMD AF</span>
+            <strong>{fuel.recommendedArrivalFuel}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="fuel-total-row">
+        <div>
+          <span>Required</span>
+          <strong>{fuel.requiredFuel}</strong>
+        </div>
+        <div>
+          <span>Taxi</span>
+          <strong>{fuel.taxiFuel}</strong>
+        </div>
+        <div>
+          <span>Extra</span>
+          <strong>{fuel.extraFuel}</strong>
+        </div>
+        <div>
+          <span>Total</span>
+          <strong>{fuel.totalFuel}</strong>
+        </div>
+      </div>
+
+      <div className="fuel-footer-row">
+        <div>
+          <span>Distance</span>
+          <strong>{fuel.distance}</strong>
+        </div>
+        <div>
+          <span>Fuel Bias</span>
+          <strong>{fuel.fuelBias}</strong>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CrewCard({ crew }) {
+  return (
+    <section className="crew-card">
+      <h2>Crew</h2>
+
+      <div className="crew-columns">
+        <div className="crew-manifest">
+          <h3>Flight Crew</h3>
+          {crew.members
+            .filter((member) => member.role === 'CPT' || member.role === 'FO')
+            .map((member) => (
+              <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
+                <span>{member.role}</span>
+                <strong>{member.name}</strong>
+                <em>{member.employeeNumber}</em>
+              </div>
+            ))}
+        </div>
+
+        <div className="crew-manifest">
+          <h3>Other Crew</h3>
+          {crew.members
+            .filter((member) => member.role !== 'CPT' && member.role !== 'FO')
+            .map((member) => (
+              <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
+                <span>{member.role}</span>
+                <strong>{member.name}</strong>
+                <em>{member.employeeNumber}</em>
+              </div>
+            ))}
+
+          {crew.jumpseaters.length === 0 && (
+            <div className="crew-row is-empty">
+              <span>J/S</span>
+              <strong>None listed</strong>
+              <em></em>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 
