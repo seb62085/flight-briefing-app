@@ -233,6 +233,105 @@ function parseFakWeights(text) {
   }
 }
 
+function parseEnrouteAlternates(text) {
+  const alternates = [
+    ...text.matchAll(
+      /ENROUTE ALTN\s+([A-Z]{3}\/[A-Z]{4}\s+.*?)(?:\s+[NS]\d{5}[EW]\d{6})(?=\s+ENROUTE ALTN|\s+RMKS\/)/gi,
+    ),
+  ].map((match) => match[1].replace(/\s+/g, ' ').trim())
+
+  return [...new Set(alternates)]
+}
+
+function parseTakeoffAlternates(text) {
+  const alternates = [
+    ...text.matchAll(
+      /(?:TAKEOFF|TKOF|DEP)\s+ALTN\s+([A-Z]{3}\/[A-Z]{4}\s+.*?)(?:\s+[NS]\d{5}[EW]\d{6})(?=\s+(?:TAKEOFF|TKOF|DEP)\s+ALTN|\s+ORIGIN|\s+DESTINATION|\s+ALTERNATE|\s+ENROUTE ALTN|\s+RMKS\/)/gi,
+    ),
+  ].map((match) => match[1].replace(/\s+/g, ' ').trim())
+
+  return [...new Set(alternates)]
+}
+
+function getIcaoFromAirport(airport) {
+  const match = airport.match(/\/([A-Z]{4})\b/)
+
+  return match ? match[1] : null
+}
+
+function cleanWeatherText(text) {
+  return text
+    .replace(/NATIONAL\s+AIRLINES\s+BRIEF\s+PAGE\s+\d+\s+OF\s+\d+\s+PAGE\s+\d+\s+OF\s+\d+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function splitWeatherReports(text, reportType, icao) {
+  if (text === 'Not found') {
+    return []
+  }
+
+  const reportPattern = new RegExp(`\\b${reportType}\\s+${icao}\\b`, 'gi')
+  const starts = [...text.matchAll(reportPattern)].map((match) => match.index)
+
+  if (starts.length === 0) {
+    return [text]
+  }
+
+  return starts.map((start, index) => {
+    const end = starts[index + 1] ?? text.length
+    return text.slice(start, end).trim()
+  })
+}
+
+function parseWeatherSections(text) {
+  const weatherSections = {}
+  const sectionMatches = [
+    ...text.matchAll(/(?:DEPARTURE|ARRIVAL|OTHER):\s+.*?(?=\s+METAR\s+[A-Z]{4})/gi),
+  ]
+
+  sectionMatches.forEach((sectionMatch, index) => {
+    const sectionStart = sectionMatch.index
+    const nextSectionStart = sectionMatches[index + 1]?.index ?? text.length
+    const block = cleanWeatherText(text.slice(sectionStart, nextSectionStart))
+    const icao = findMatch(block, [/METAR\s+([A-Z]{4})\b/i])
+
+    if (icao === 'Not found') {
+      return
+    }
+
+    const tafIndex = block.search(new RegExp(`\\bTAF\\s+${icao}\\b`, 'i'))
+    const firstMetarIndex = block.search(new RegExp(`\\bMETAR\\s+${icao}\\b`, 'i'))
+    const notamPattern = new RegExp(
+      `\\s(?:[A-Z][A-Z /]{0,18}\\s+-\\s+${icao}\\b|\\*\\*NEW\\*\\*${icao}\\b)`,
+      'i',
+    )
+    const afterTaf = tafIndex >= 0 ? block.slice(tafIndex) : ''
+    const notamRelativeIndex = afterTaf.search(notamPattern)
+    const notamIndex = tafIndex >= 0 && notamRelativeIndex >= 0
+      ? tafIndex + notamRelativeIndex
+      : -1
+
+    const metar = firstMetarIndex >= 0
+      ? block.slice(firstMetarIndex, tafIndex >= 0 ? tafIndex : notamIndex >= 0 ? notamIndex : block.length).trim()
+      : 'Not found'
+    const taf = tafIndex >= 0
+      ? block.slice(tafIndex, notamIndex >= 0 ? notamIndex : block.length).trim()
+      : 'Not found'
+    const notams = notamIndex >= 0 ? block.slice(notamIndex).trim() : 'Not found'
+
+    weatherSections[icao] = {
+      metar,
+      metars: splitWeatherReports(metar, 'METAR', icao),
+      taf,
+      tafs: splitWeatherReports(taf, 'TAF', icao),
+      notams,
+    }
+  })
+
+  return weatherSections
+}
+
 function parseFlightPlan(text) {
   const normalizedText = text.replace(/\s+/g, ' ')
 
@@ -245,7 +344,7 @@ function parseFlightPlan(text) {
   )
 
   const alternateDetails = normalizedText.match(
-    /ALTERNATE\s+([A-Z]{3}\/[A-Z]{4}\s+.*?)(?:\s+[NS]\d{5}[EW]\d{6})\s+([0-9]{4}Z)(?=\s+RMKS\/)/i,
+    /ALTERNATE\s+([A-Z]{3}\/[A-Z]{4}\s+.*?)(?:\s+[NS]\d{5}[EW]\d{6})\s+([0-9]{4}Z)(?=\s+ENROUTE ALTN|\s+RMKS\/)/i,
   )
 
   return {
@@ -265,10 +364,10 @@ function parseFlightPlan(text) {
       /DISPATCHER\s*:\s*([A-Z\s]+?)\s+\d{4,}/i,
     ]),
     flight: findMatch(normalizedText, [
-      /\b([A-Z]{3}\d{3,4})\/\d{2}[A-Z]{3}\d{2}\b/,
+      /\b([A-Z]{3}\d{3,4})\s*\/\s*\d{2}[A-Z]{3}\d{2}\b/,
     ]),
     date: findMatch(normalizedText, [
-      /[A-Z]{3}\d{3,4}\/(\d{2}[A-Z]{3}\d{2})\b/,
+      /[A-Z]{3}\d{3,4}\s*\/\s*(\d{2}[A-Z]{3}\d{2})\b/,
     ]),
     aircraftRegistration: findMatch(normalizedText, [
       /\d{2}[A-Z]{3}\d{2}\s+([A-Z]\d{3}[A-Z]{2})\s+B/i,
@@ -279,11 +378,14 @@ function parseFlightPlan(text) {
     eta: destinationDetails ? destinationDetails[2].trim() : 'Not found',
     alternate: alternateDetails ? alternateDetails[1].trim() : 'Not found',
     alternateEta: alternateDetails ? alternateDetails[2].trim() : 'Not found',
+    takeoffAlternates: parseTakeoffAlternates(normalizedText),
+    enrouteAlternates: parseEnrouteAlternates(normalizedText),
     melItems: parseMelItems(normalizedText),
     fuel: parseFuelSection(normalizedText),
     route: parseRouteSection(normalizedText),
     crew: parseCrewSection(normalizedText),
     fakWeights: parseFakWeights(normalizedText),
+    weather: parseWeatherSections(normalizedText),
   }
 }
 
@@ -452,6 +554,14 @@ function App() {
                       <em>ETA {summary.alternateEta}</em>
                     </article>
                   </div>
+
+                  {(summary.takeoffAlternates.length > 0 ||
+                    summary.enrouteAlternates.length > 0) && (
+                    <ExtraAlternates
+                      takeoffAlternates={summary.takeoffAlternates}
+                      enrouteAlternates={summary.enrouteAlternates}
+                    />
+                  )}
                 </section>
 
                 {summary.fuel && <FuelCard fuel={summary.fuel} />}
@@ -481,6 +591,19 @@ function App() {
 
                 <p>{summary.route.route}</p>
               </section>
+            )}
+
+            {summary?.enrouteAlternates?.length > 0 && (
+              <ExtraAlternates
+                takeoffAlternates={summary.takeoffAlternates}
+                enrouteAlternates={summary.enrouteAlternates}
+              />
+            )}
+
+            {summary && (
+              <AerodromeWeatherCards
+                summary={summary}
+              />
             )}
           </section>
         )}
@@ -715,6 +838,93 @@ function CrewCard({ crew }) {
             </div>
           )}
         </div>
+      </div>
+    </section>
+  )
+}
+
+function ExtraAlternates({ takeoffAlternates, enrouteAlternates }) {
+  return (
+    <section className="alternate-card">
+      <h2>Additional Alternates</h2>
+
+      <div className="alternate-grid">
+        {takeoffAlternates.map((alternate) => (
+          <article key={`takeoff-${alternate}`}>
+            <span>Takeoff Alternate</span>
+            <strong>{alternate}</strong>
+          </article>
+        ))}
+
+        {enrouteAlternates.map((alternate) => (
+          <article key={`enroute-${alternate}`}>
+            <span>Enroute Alternate</span>
+            <strong>{alternate}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function AerodromeWeatherCards({ summary }) {
+  const aerodromes = [
+    { label: 'Origin', airport: summary.origin },
+    { label: 'Destination', airport: summary.destination },
+    { label: 'Alternate', airport: summary.alternate },
+    ...summary.takeoffAlternates.map((airport) => ({
+      label: 'Takeoff Alternate',
+      airport,
+    })),
+    ...summary.enrouteAlternates.map((airport) => ({
+      label: 'Enroute Alternate',
+      airport,
+    })),
+  ]
+    .map((aerodrome) => ({
+      ...aerodrome,
+      icao: getIcaoFromAirport(aerodrome.airport),
+    }))
+    .filter((aerodrome) => aerodrome.icao)
+    .filter((aerodrome, index, allAerodromes) =>
+      allAerodromes.findIndex((item) => item.icao === aerodrome.icao) === index
+    )
+
+  return (
+    <section className="weather-section">
+      <h2>Aerodrome Weather</h2>
+
+      <div className="weather-grid">
+        {aerodromes.map((aerodrome) => {
+          const weather = summary.weather[aerodrome.icao]
+
+          return (
+            <article className="weather-card" key={aerodrome.icao}>
+              <div className="weather-card-header">
+                <div>
+                  <span>{aerodrome.label}</span>
+                  <strong>{aerodrome.airport}</strong>
+                </div>
+                <em>{aerodrome.icao}</em>
+              </div>
+
+              <div className="weather-report">
+                <span>METAR</span>
+                {weather?.metars?.length > 0 ? (
+                  weather.metars.map((metar) => <p key={metar}>{metar}</p>)
+                ) : (
+                  <p>Not found</p>
+                )}
+              </div>
+
+              <div className="weather-report">
+                <span>TAF</span>
+                <p>{weather?.taf ?? 'Not found'}</p>
+              </div>
+
+            </article>
+          )
+        })}
       </div>
     </section>
   )
