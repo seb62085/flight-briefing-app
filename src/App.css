@@ -484,3 +484,72 @@ h1 {
     grid-template-columns: 44px 1fr auto;
   }
 }
+
+.fak-card {
+  margin-top: 20px;
+  padding: 14px;
+  background: #f8fbfd;
+  border: 1px solid #d8e0e7;
+  border-radius: 8px;
+}
+
+.fak-header {
+  display: grid;
+  grid-template-columns: 1fr minmax(150px, auto);
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+.fak-header h2 {
+  margin: 0;
+  font-size: 20px;
+  align-self: center;
+}
+
+.fak-header div,
+.fak-row {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  background: white;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+}
+
+.fak-header span {
+  color: #5c6b78;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.fak-header strong {
+  color: #17212b;
+  font-size: 18px;
+}
+
+.fak-list {
+  display: grid;
+  gap: 6px;
+}
+
+.fak-row {
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+}
+
+.fak-row span {
+  color: #17212b;
+  font-weight: 700;
+}
+
+.fak-row strong {
+  color: #2f6f8f;
+}
+
+@media (max-width: 760px) {
+  .fak-header {
+    grid-template-columns: 1fr;
+  }
+}

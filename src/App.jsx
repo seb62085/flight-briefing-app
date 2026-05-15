@@ -193,6 +193,42 @@ function parseCrewSection(text) {
   }
 }
 
+function parseFakWeights(text) {
+  const fakSection = findMatch(text, [
+    /FAK\s+WEIGHTS:\s+(.*?)(?=\s+MTOW\s+LTD|\s+NATIONAL\s+AIRLINES|$)/i,
+  ])
+
+  if (fakSection === 'Not found') {
+    return null
+  }
+
+  const items = [
+    ...fakSection.matchAll(
+      /([A-Z0-9 .\/]+?)\.{2,}\s*(\d+)\s+KGS/gi,
+    ),
+  ].map((match) => {
+    const label = match[1]
+      .replace(/.*INPUTTED BY:\s+[A-Z]{1,4}\s+/i, '')
+      .replace(/^[A-Z]{1,4}\s+(?=STRAPS\b)/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    return {
+      label: label.includes('STRAPS') ? 'STRAPS' : label,
+      weight: Number(match[2]),
+    }
+  })
+
+  if (items.length === 0) {
+    return null
+  }
+
+  return {
+    items,
+    total: items.reduce((sum, item) => sum + item.weight, 0),
+  }
+}
+
 function parseFlightPlan(text) {
   const normalizedText = text.replace(/\s+/g, ' ')
 
@@ -243,6 +279,7 @@ function parseFlightPlan(text) {
     fuel: parseFuelSection(normalizedText),
     route: parseRouteSection(normalizedText),
     crew: parseCrewSection(normalizedText),
+    fakWeights: parseFakWeights(normalizedText),
   }
 }
 
@@ -536,6 +573,27 @@ function App() {
                   </div>
                 )}
               </div>
+            </div>
+          </section>
+        )}
+
+        {summary?.fakWeights && (
+          <section className="fak-card">
+            <div className="fak-header">
+              <h2>FAK Weights</h2>
+              <div>
+                <span>Total</span>
+                <strong>{summary.fakWeights.total} KGS</strong>
+              </div>
+            </div>
+
+            <div className="fak-list">
+              {summary.fakWeights.items.map((item) => (
+                <div className="fak-row" key={`${item.label}-${item.weight}`}>
+                  <span>{item.label}</span>
+                  <strong>{item.weight} KGS</strong>
+                </div>
+              ))}
             </div>
           </section>
         )}
