@@ -45,6 +45,101 @@ function parseMelItems(text) {
     note: match[4].trim(),
   }))
 }
+function calculateAlternatePlusReserve(alternateFuel) {
+  const numericFuel = Number(alternateFuel)
+
+  if (!Number.isFinite(numericFuel)) {
+    return 'Not found'
+  }
+
+  const roundedAlternate = Math.ceil((numericFuel / 1000) * 10) / 10
+  return (roundedAlternate + 7.5).toFixed(1)
+}
+
+function parseFuelSection(text) {
+  const fuelSection = findMatch(text, [
+    /(THIS IS A .*?FUEL\s+COST AT .*?NATIONAL\s+AIRLINES)/i,
+    /([A-Z]{4}\/[A-Z]{4}\s+WEIGHTS\s+BURN\s+.*?NATIONAL\s+AIRLINES)/i,
+  ])
+
+  if (fuelSection === 'Not found') {
+    return null
+  }
+
+  return {
+    isB043: /B043|BRAVO\s*43/i.test(fuelSection) ? 'Yes' : 'No',
+    isB044Redispatch: /B044|BRAVO\s*44|RE-?DISPATCH/i.test(fuelSection)
+      ? 'Yes'
+      : 'No',
+    burn: findMatch(fuelSection, [
+      /BURN\s+(\d+)\s+\d{4}\s+[A-Z]{4}\s+BOW/i,
+    ]),
+    flightTime: findMatch(fuelSection, [
+      /BURN\s+\d+\s+(\d{4})\s+[A-Z]{4}\s+BOW/i,
+    ]),
+    alternateFuel: findMatch(fuelSection, [
+      /ALTN\s+(\d+)\s+\d{4}\s+[A-Z]{4}/i,
+    ]),
+    alternatePlusReserve: calculateAlternatePlusReserve(
+  findMatch(fuelSection, [
+    /ALTN\s+(\d+)\s+\d{4}\s+[A-Z]{4}/i,
+  ]),
+),
+    reserveFuel: findMatch(fuelSection, [
+      /RESV\s+(\d+)\s+(\d+)\s+TOF/i,
+    ]),
+    reserveMinutes: findMatch(fuelSection, [
+      /RESV\s+\d+\s+(\d+)\s+TOF/i,
+    ]),
+    secondReserveFuel: findMatch(fuelSection, [
+      /RESV\s+(\d+)\s+TOW/i,
+    ]),
+    additionalFuel: findMatch(fuelSection, [
+      /ADDN\s+(\d+)\s+\d{4}/i,
+    ]),
+    additionalTime: findMatch(fuelSection, [
+      /ADDN\s+\d+\s+(\d{4})/i,
+    ]),
+    ballast: findMatch(fuelSection, [
+      /BLST\s+(\d+)/i,
+    ]),
+    payload: findMatch(fuelSection, [
+      /PYLD\s+(\d+)/i,
+    ]),
+    zeroFuelWeight: findMatch(fuelSection, [
+      /ZFW\s+(\d+)/i,
+    ]),
+    takeoffWeight: findMatch(fuelSection, [
+      /TOW\s+(\d+)/i,
+    ]),
+    estimatedLandingWeight: findMatch(fuelSection, [
+      /ELW\s+(\d+)/i,
+    ]),
+    recommendedArrivalFuel: findMatch(fuelSection, [
+      /RCMD AF\s+(\d+)/i,
+    ]),
+    requiredFuel: findMatch(fuelSection, [
+      /REQ\s+(\d+)/i,
+    ]),
+    taxiFuel: findMatch(fuelSection, [
+      /TAXI\s+(\d+)/i,
+    ]),
+    extraFuel: findMatch(fuelSection, [
+      /XTRA\s+(\d+)/i,
+    ]),
+    totalFuel: findMatch(fuelSection, [
+      /TOT\s+(\d+)/i,
+    ]),
+    distance: findMatch(fuelSection, [
+      /DST\s+(\d+)/i,
+    ]),
+    fuelBias: findMatch(fuelSection, [
+      /FUEL\s+BIAS:\s*([+-]?\d+(?:\.\d+)?)/i,
+    ]),
+  }
+}
+
+
 
 function parseFlightPlan(text) {
   const normalizedText = text.replace(/\s+/g, ' ')
@@ -72,7 +167,7 @@ function parseFlightPlan(text) {
       /COMPUTE TIME:\s*([0-9]{4}Z)/i,
     ]),
     revision: findMatch(normalizedText, [
-    /REVISION:\s*(\d+)/i,
+      /REVISION:\s*(\d+)/i,
     ]),
     dispatcher: findMatch(normalizedText, [
       /DISPATCHER\s*:\s*([A-Z\s]+?)\s+\d{4,}/i,
@@ -93,6 +188,7 @@ function parseFlightPlan(text) {
     alternate: alternateDetails ? alternateDetails[1].trim() : 'Not found',
     alternateEta: alternateDetails ? alternateDetails[2].trim() : 'Not found',
     melItems: parseMelItems(normalizedText),
+    fuel: parseFuelSection(normalizedText),
   }
 }
 
@@ -102,7 +198,6 @@ function App() {
   const [status, setStatus] = useState('Choose a PDF flight plan to begin.')
   const [summary, setSummary] = useState(null)
   const [showExtractedText, setShowExtractedText] = useState(false)
-
 
   async function handleFileChange(event) {
     const file = event.target.files[0]
@@ -163,95 +258,202 @@ function App() {
 
         <p className="status">{status}</p>
 
-       {summary && (
-  <section className="briefing-summary">
-    <div className="admin-strip">
+        {summary && (
+          <section className="briefing-summary">
+            <div className="admin-strip">
+              <div>
+                <span>Plan</span>
+                <strong>{summary.plan}</strong>
+              </div>
+              <div>
+                <span>Trip</span>
+                <strong>{summary.trip}</strong>
+              </div>
+              <div>
+                <span>Compute</span>
+                <strong>{summary.computeTime}</strong>
+              </div>
+              <div>
+                <span>Revision</span>
+                <strong>{summary.revision}</strong>
+              </div>
+              <div>
+                <span>Dispatcher</span>
+                <strong>{summary.dispatcher}</strong>
+              </div>
+            </div>
+
+            <div className="flight-strip">
+              <div>
+                <span>Date</span>
+                <strong>{summary.date}</strong>
+              </div>
+              <div>
+                <span>Flight</span>
+                <strong>{summary.flight}</strong>
+              </div>
+              <div>
+                <span>Registration</span>
+                <strong>{summary.aircraftRegistration}</strong>
+              </div>
+            </div>
+
+            <div className="airport-grid">
+              <article>
+                <span>Origin</span>
+                <strong>{summary.origin}</strong>
+                <em>ETD {summary.etd}</em>
+              </article>
+              <article>
+                <span>Destination</span>
+                <strong>{summary.destination}</strong>
+                <em>ETA {summary.eta}</em>
+              </article>
+              <article>
+                <span>Alternate</span>
+                <strong>{summary.alternate}</strong>
+                <em>ETA {summary.alternateEta}</em>
+              </article>
+            </div>
+          </section>
+        )}
+
+        {summary?.fuel && (
+  <section className="fuel-card">
+    <h2>Fuel Summary</h2>
+
+    <div className="fuel-flags">
       <div>
-        <span>Plan</span>
-        <strong>{summary.plan}</strong>
+        <span>B043</span>
+        <strong>{summary.fuel.isB043}</strong>
       </div>
       <div>
-        <span>Trip</span>
-        <strong>{summary.trip}</strong>
-      </div>
-      <div>
-        <span>Compute</span>
-        <strong>{summary.computeTime}</strong>
-      </div>
-      <div>
-        <span>Revision</span>
-        <strong>{summary.revision}</strong>
-      </div>
-      <div>
-        <span>Dispatcher</span>
-        <strong>{summary.dispatcher}</strong>
+        <span>B044 / Redispatch</span>
+        <strong>{summary.fuel.isB044Redispatch}</strong>
       </div>
     </div>
 
-    <div className="flight-strip">
-      <div>
-        <span>Date</span>
-        <strong>{summary.date}</strong>
+    <div className="fuel-columns">
+      <div className="fuel-column">
+        <div>
+          <span>Burn</span>
+          <strong>{summary.fuel.burn}</strong>
+          <em>{summary.fuel.flightTime}</em>
+        </div>
+        <div className="fuel-pair">
+  <div>
+    <span>ALTN</span>
+    <strong>{summary.fuel.alternateFuel}</strong>
+  </div>
+  <div>
+    <span>ALTN + 7.5</span>
+    <strong>{summary.fuel.alternatePlusReserve}</strong>
+  </div>
+</div>
+        <div>
+          <span>Reserve</span>
+          <strong>{summary.fuel.reserveFuel}</strong>
+          <em>{summary.fuel.reserveMinutes} min</em>
+        </div>
+        <div>
+          <span>Reserve 2</span>
+          <strong>{summary.fuel.secondReserveFuel}</strong>
+        </div>
+        <div>
+          <span>Additional</span>
+          <strong>{summary.fuel.additionalFuel}</strong>
+          <em>{summary.fuel.additionalTime}</em>
+        </div>
+        <div>
+          <span>Ballast</span>
+          <strong>{summary.fuel.ballast}</strong>
+        </div>
       </div>
-      <div>
-        <span>Flight</span>
-        <strong>{summary.flight}</strong>
-      </div>
-      <div>
-        <span>Registration</span>
-        <strong>{summary.aircraftRegistration}</strong>
+
+      <div className="fuel-column">
+        <div>
+          <span>Payload</span>
+          <strong>{summary.fuel.payload}</strong>
+        </div>
+        <div>
+          <span>ZFW</span>
+          <strong>{summary.fuel.zeroFuelWeight}</strong>
+        </div>
+        <div>
+          <span>TOW</span>
+          <strong>{summary.fuel.takeoffWeight}</strong>
+        </div>
+        <div>
+          <span>ELW</span>
+          <strong>{summary.fuel.estimatedLandingWeight}</strong>
+        </div>
+        <div>
+          <span>RCMD AF</span>
+          <strong>{summary.fuel.recommendedArrivalFuel}</strong>
+        </div>
       </div>
     </div>
 
-    <div className="airport-grid">
-      <article>
-        <span>Origin</span>
-        <strong>{summary.origin}</strong>
-        <em>ETD {summary.etd}</em>
-      </article>
-      <article>
-        <span>Destination</span>
-        <strong>{summary.destination}</strong>
-        <em>ETA {summary.eta}</em>
-      </article>
-      <article>
-        <span>Alternate</span>
-        <strong>{summary.alternate}</strong>
-        <em>ETA {summary.alternateEta}</em>
-      </article>
+    <div className="fuel-total-row">
+      <div>
+        <span>Required</span>
+        <strong>{summary.fuel.requiredFuel}</strong>
+      </div>
+      <div>
+        <span>Taxi</span>
+        <strong>{summary.fuel.taxiFuel}</strong>
+      </div>
+      <div>
+        <span>Extra</span>
+        <strong>{summary.fuel.extraFuel}</strong>
+      </div>
+      <div>
+        <span>Total</span>
+        <strong>{summary.fuel.totalFuel}</strong>
+      </div>
     </div>
+
+    <div className="fuel-footer-row">
+  <div>
+    <span>Distance</span>
+    <strong>{summary.fuel.distance}</strong>
+  </div>
+  <div>
+    <span>Fuel Bias</span>
+    <strong>{summary.fuel.fuelBias}</strong>
+  </div>
+</div>
   </section>
 )}
 
 
         {summary?.melItems?.length > 0 && (
-  <section className="mel-list">
-    <h2>Planned MEL Items</h2>
+          <section className="mel-list">
+            <h2>Planned MEL Items</h2>
 
-    {summary.melItems.map((item) => (
-      <article className="mel-card" key={`${item.melNumber}-${item.dmiNumber}`}>
-        <div className="mel-meta">
-          <div>
-            <span>MEL</span>
-            <strong>{item.melNumber}</strong>
-          </div>
-          <div>
-            <span>DMI</span>
-            <strong>{item.dmiNumber}</strong>
-          </div>
-          <div>
-            <span>Expires</span>
-            <strong>{item.expiryDate}</strong>
-          </div>
-        </div>
-        <p>{item.note}</p>
-      </article>
-    ))}
-  </section>
-)}
+            {summary.melItems.map((item) => (
+              <article className="mel-card" key={`${item.melNumber}-${item.dmiNumber}`}>
+                <div className="mel-meta">
+                  <div>
+                    <span>MEL</span>
+                    <strong>{item.melNumber}</strong>
+                  </div>
+                  <div>
+                    <span>DMI</span>
+                    <strong>{item.dmiNumber}</strong>
+                  </div>
+                  <div>
+                    <span>Expires</span>
+                    <strong>{item.expiryDate}</strong>
+                  </div>
+                </div>
+                <p>{item.note}</p>
+              </article>
+            ))}
+          </section>
+        )}
 
-
-         {pdfText && (
+        {pdfText && (
           <section className="text-preview">
             <button
               type="button"
