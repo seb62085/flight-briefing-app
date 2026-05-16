@@ -496,6 +496,9 @@ function App() {
     setShowExtractedText(false)
     setStatus('Reading PDF...')
 
+    let extractedText = ''
+    let pageCount = 0
+
     try {
       const fileBuffer = await file.arrayBuffer()
       const pdfData = new Uint8Array(fileBuffer)
@@ -504,6 +507,7 @@ function App() {
         disableWorker: true,
       }).promise
       const pages = []
+      pageCount = pdf.numPages
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
         const page = await pdf.getPage(pageNumber)
@@ -512,20 +516,26 @@ function App() {
         pages.push(pageText)
       }
 
-      const extractedText = pages.join('\n\n')
+      extractedText = pages.join('\n\n')
 
       if (!extractedText.trim()) {
         throw new Error('No selectable text was found in this PDF.')
       }
+    } catch (error) {
+      console.error(error)
+      setStatus(getPdfErrorMessage(error))
+      return
+    }
 
+    try {
       const parsedSummary = parseFlightPlan(extractedText)
       setPdfText(extractedText)
       setSummary(parsedSummary)
       setPic(parsedSummary.fuel?.pic === 'Not found' ? '' : parsedSummary.fuel?.pic ?? '')
-      setStatus(`Read ${pdf.numPages} page(s) from ${file.name} (${formatFileSize(file.size)}).`)
+      setStatus(`Read ${pageCount} page(s) from ${file.name} (${formatFileSize(file.size)}).`)
     } catch (error) {
       console.error(error)
-      setStatus(getPdfErrorMessage(error))
+      setStatus(`Parser failed after reading PDF: ${error?.message ?? 'Unknown parser error'}`)
     }
   }
 

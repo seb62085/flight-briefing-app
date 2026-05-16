@@ -26,6 +26,34 @@ if (typeof Array.prototype.at !== 'function') {
   }
 }
 
+if (typeof String.prototype.matchAll !== 'function') {
+  String.prototype.matchAll = function matchAll(regexp) {
+    const sourceText = String(this)
+    const sourceRegexp = regexp instanceof RegExp ? regexp : new RegExp(regexp)
+    const sourceFlags = sourceRegexp.flags ?? [
+      sourceRegexp.global ? 'g' : '',
+      sourceRegexp.ignoreCase ? 'i' : '',
+      sourceRegexp.multiline ? 'm' : '',
+      sourceRegexp.unicode ? 'u' : '',
+      sourceRegexp.sticky ? 'y' : '',
+    ].join('')
+    const flags = sourceFlags.includes('g') ? sourceFlags : `${sourceFlags}g`
+    const matcher = new RegExp(sourceRegexp.source, flags)
+    const matches = []
+    let match
+
+    while ((match = matcher.exec(sourceText)) !== null) {
+      matches.push(match)
+
+      if (match[0] === '') {
+        matcher.lastIndex += 1
+      }
+    }
+
+    return matches[Symbol.iterator]()
+  }
+}
+
 const typedArrays = [
   Int8Array,
   Uint8Array,
