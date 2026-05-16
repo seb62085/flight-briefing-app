@@ -17,6 +17,34 @@ function findMatch(text, patterns) {
   return 'Not found'
 }
 
+function getPdfErrorMessage(error) {
+  if (error?.name === 'PasswordException') {
+    return 'This PDF is password protected, so the app cannot read it yet.'
+  }
+
+  if (error?.name === 'InvalidPDFException') {
+    return 'This file does not look like a valid PDF.'
+  }
+
+  if (error?.name === 'MissingPDFException') {
+    return 'The selected PDF could not be opened from this location.'
+  }
+
+  if (error?.message) {
+    return `PDF read failed: ${error.message}`
+  }
+
+  return 'Sorry, I could not read text from that PDF.'
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes)) {
+    return 'unknown size'
+  }
+
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
 function formatMelNumber(rawMelNumber) {
   const digits = rawMelNumber.replace(/^M/i, '')
 
@@ -86,6 +114,12 @@ function parseFuelSection(text) {
         /ALTN\s+(\d+)\s+\d{4}\s+[A-Z]{4}/i,
       ]),
     ),
+    holdFuel: findMatch(fuelSection, [
+      /HOLD\s+(\d+)\s+\d{4}/i,
+    ]),
+    holdTime: findMatch(fuelSection, [
+      /HOLD\s+\d+\s+(\d{4})/i,
+    ]),
     reserveFuel: findMatch(fuelSection, [
       /RESV\s+(\d+)\s+(\d+)\s+TOF/i,
     ]),
@@ -174,13 +208,21 @@ function parseCrewSection(text) {
 
   const crewMembers = [
     ...crewSection.matchAll(
-      /\b(CPT|FO|LM|MX|J\/S)\s+([A-Z][A-Z\s]+?)\s+(?:[A-Z]{1,4}\s+)?(\d{4,6})(?=\s+(?:CPT|FO|LM|MX|J\/S)\b|$)/gi,
+      /\b(CPT|FO|LM|MX|DH|J\/S)\s+(.+?)(?=\s+(?:CPT|FO|LM|MX|DH|J\/S)\b|$)/gi,
     ),
-  ].map((match) => ({
-    role: match[1].toUpperCase(),
-    name: match[2].replace(/\s+/g, ' ').trim(),
-    employeeNumber: match[3].trim(),
-  }))
+  ].map((match) => {
+    const role = match[1].toUpperCase()
+    const details = match[2].replace(/\s+/g, ' ').trim()
+    const employeeMatch = details.match(/(?:\s+[A-Z]{2,4})?\s+(\d{4,6})$/)
+
+    return {
+      role,
+      name: employeeMatch
+        ? details.slice(0, employeeMatch.index).trim()
+        : details,
+      employeeNumber: employeeMatch ? employeeMatch[1].trim() : '',
+    }
+  })
 
   if (crewMembers.length === 0) {
     return null
@@ -251,6 +293,47 @@ function parseTakeoffAlternates(text) {
   ].map((match) => match[1].replace(/\s+/g, ' ').trim())
 
   return [...new Set(alternates)]
+}
+
+function describeEtpType(rawType) {
+  const normalizedType = rawType.replace(/\s+/g, ' ').trim().toUpperCase()
+
+  if (normalizedType.includes('DEPRESS')) {
+    return 'Depressurization'
+  }
+
+  if (normalizedType.includes('2') || normalizedType.includes('TWO')) {
+    return 'Two-engine inop'
+  }
+
+  return normalizedType
+}
+
+function parseEtps(text) {
+  const etpText = cleanWeatherText(text)
+  const etpMatches = [
+    ...etpText.matchAll(
+      /((?:DEPRESSURIZATION|2\s*ENG(?:INE)?\s*INOP|TWO\s*ENG(?:INE)?\s*INOP)\s+ETP)\s+FOR\s+([A-Z]{4})\/([A-Z]{4})\s+LOC\s+([NS]\d{5}[EW]\d{6})(.*?)(?=\s+(?:DEPRESSURIZATION|2\s*ENG(?:INE)?\s*INOP|TWO\s*ENG(?:INE)?\s*INOP)\s+ETP\s+FOR|\s+[A-Z]{4}\s+VALIDITY WINDOW|\s+NATIONAL\s+AIRLINES\s+BRIEF|$)/gi,
+    ),
+  ]
+
+  const validityWindows = {}
+
+  for (const match of etpText.matchAll(
+    /\b([A-Z]{4})\s+VALIDITY WINDOW\s+([0-9:]{4,5}Z)\s+TO\s+([0-9:]{4,5}Z)/gi,
+  )) {
+    validityWindows[match[1]] = `${match[2]} to ${match[3]}`
+  }
+
+  return etpMatches.map((match) => ({
+    type: describeEtpType(match[1]),
+    airportPair: `${match[2]}/${match[3]}`,
+    location: match[4],
+    firstAirport: match[2],
+    secondAirport: match[3],
+    firstValidity: validityWindows[match[2]] ?? 'Not found',
+    secondValidity: validityWindows[match[3]] ?? 'Not found',
+  }))
 }
 
 function getIcaoFromAirport(airport) {
@@ -383,6 +466,7 @@ function parseFlightPlan(text) {
     melItems: parseMelItems(normalizedText),
     fuel: parseFuelSection(normalizedText),
     route: parseRouteSection(normalizedText),
+    etps: parseEtps(normalizedText),
     crew: parseCrewSection(normalizedText),
     fakWeights: parseFakWeights(normalizedText),
     weather: parseWeatherSections(normalizedText),
@@ -414,7 +498,8 @@ function App() {
 
     try {
       const fileBuffer = await file.arrayBuffer()
-      const pdf = await pdfjsLib.getDocument({ data: fileBuffer }).promise
+      const pdfData = new Uint8Array(fileBuffer)
+      const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise
       const pages = []
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
@@ -425,14 +510,19 @@ function App() {
       }
 
       const extractedText = pages.join('\n\n')
+
+      if (!extractedText.trim()) {
+        throw new Error('No selectable text was found in this PDF.')
+      }
+
       const parsedSummary = parseFlightPlan(extractedText)
       setPdfText(extractedText)
       setSummary(parsedSummary)
       setPic(parsedSummary.fuel?.pic === 'Not found' ? '' : parsedSummary.fuel?.pic ?? '')
-      setStatus(`Read ${pdf.numPages} page(s) from the PDF.`)
+      setStatus(`Read ${pdf.numPages} page(s) from ${file.name} (${formatFileSize(file.size)}).`)
     } catch (error) {
       console.error(error)
-      setStatus('Sorry, I could not read text from that PDF.')
+      setStatus(getPdfErrorMessage(error))
     }
   }
 
@@ -600,6 +690,8 @@ function App() {
               />
             )}
 
+            {summary?.etps?.length > 0 && <EtpCard etps={summary.etps} />}
+
             {summary && (
               <AerodromeWeatherCards
                 summary={summary}
@@ -732,6 +824,11 @@ function FuelCard({ fuel }) {
             <strong>{fuel.secondReserveFuel}</strong>
           </div>
           <div>
+            <span>Hold</span>
+            <strong>{fuel.holdFuel}</strong>
+            <em>{fuel.holdTime}</em>
+          </div>
+          <div>
             <span>Additional</span>
             <strong>{fuel.additionalFuel}</strong>
             <em>{fuel.additionalTime}</em>
@@ -810,7 +907,7 @@ function CrewCard({ crew }) {
           {crew.members
             .filter((member) => member.role === 'CPT' || member.role === 'FO')
             .map((member) => (
-              <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
+              <div className="crew-row" key={`${member.role}-${member.name}-${member.employeeNumber}`}>
                 <span>{member.role}</span>
                 <strong>{member.name}</strong>
                 <em>{member.employeeNumber}</em>
@@ -823,7 +920,7 @@ function CrewCard({ crew }) {
           {crew.members
             .filter((member) => member.role !== 'CPT' && member.role !== 'FO')
             .map((member) => (
-              <div className="crew-row" key={`${member.role}-${member.employeeNumber}`}>
+              <div className="crew-row" key={`${member.role}-${member.name}-${member.employeeNumber}`}>
                 <span>{member.role}</span>
                 <strong>{member.name}</strong>
                 <em>{member.employeeNumber}</em>
@@ -860,6 +957,46 @@ function ExtraAlternates({ takeoffAlternates, enrouteAlternates }) {
           <article key={`enroute-${alternate}`}>
             <span>Enroute Alternate</span>
             <strong>{alternate}</strong>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function EtpCard({ etps }) {
+  return (
+    <section className="etp-card">
+      <h2>ETP</h2>
+
+      <div className="etp-list">
+        {etps.map((etp) => (
+          <article className="etp-item" key={`${etp.type}-${etp.airportPair}-${etp.location}`}>
+            <div className="etp-header">
+              <div>
+                <span>Type</span>
+                <strong>{etp.type}</strong>
+              </div>
+              <div>
+                <span>Airport Pair</span>
+                <strong>{etp.airportPair}</strong>
+              </div>
+              <div>
+                <span>ETP Location</span>
+                <strong>{etp.location}</strong>
+              </div>
+            </div>
+
+            <div className="etp-validity">
+              <div>
+                <span>{etp.firstAirport} Validity</span>
+                <strong>{etp.firstValidity}</strong>
+              </div>
+              <div>
+                <span>{etp.secondAirport} Validity</span>
+                <strong>{etp.secondValidity}</strong>
+              </div>
+            </div>
           </article>
         ))}
       </div>

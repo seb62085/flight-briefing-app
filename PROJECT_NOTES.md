@@ -76,14 +76,15 @@ Important patterns currently supported:
   - takeoff alternate parsing has a first-pass pattern for `TAKEOFF ALTN`, `TKOF ALTN`, and `DEP ALTN`, but needs a real sample before trusting it
 - Fuel:
   - detects B043 / B044 / redispatch
-  - parses burn, flight time, alternate fuel, reserve, second reserve, additional, ballast, payload, ZFW, TOW, ELW, RCMD AF, REQ, taxi, extra, total, distance, fuel bias, and PIC
+  - parses burn, flight time, alternate fuel, hold fuel/time, reserve, second reserve, additional, ballast, payload, ZFW, TOW, ELW, RCMD AF, REQ, taxi, extra, total, distance, fuel bias, and PIC
   - `ALTN + 7.5` is calculated as:
     - alternate fuel / 1000
     - rounded up to nearest tenth
     - plus 7.5
 - Crew:
   - parses after `WIND ... MXSH ...` and before `--- FLIGHT LEVEL CALCULATION ---`
-  - roles: `CPT`, `FO`, `LM`, `MX`, `J/S`
+  - roles: `CPT`, `FO`, `LM`, `MX`, `DH`, `J/S`
+  - `DH` entries may not include employee numbers
   - ignores base
   - SOB currently equals parsed crew count
 - FAK:
@@ -95,6 +96,10 @@ Important patterns currently supported:
   - identifies airport ICAO from first `METAR ICAO`
   - separates METARs into individual lines
   - TAF is currently shown as one block
+- ETP:
+  - parses depressurization ETP blocks such as `DEPRESSURIZATION ETP FOR KLAX/PHNL LOC N31560W141026`
+  - first-pass support for two-engine-inop labels such as `2 ENG INOP ETP` and `TWO ENGINE INOP ETP`
+  - captures ETP type, airport pair, location, and airport validity windows when listed as `KLAX VALIDITY WINDOW 12:42Z TO 20:04Z`
 
 ## Important User Preferences
 
@@ -135,6 +140,7 @@ git push
 ## Next Likely Work
 
 - Tune weather parser against more real PDFs.
+- Tune ETP parser against two-engine-inop examples.
 - Add weather cards for takeoff alternates once real formatting is provided.
 - Improve TAF formatting.
 - Add printable LM Chit styling.
