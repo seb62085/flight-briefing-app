@@ -45,6 +45,17 @@ function formatFileSize(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+async function runWithPdfWorkerDisabled(callback) {
+  const originalWorker = globalThis.Worker
+
+  try {
+    globalThis.Worker = undefined
+    return await callback()
+  } finally {
+    globalThis.Worker = originalWorker
+  }
+}
+
 function formatMelNumber(rawMelNumber) {
   const digits = rawMelNumber.replace(/^M/i, '')
 
@@ -502,10 +513,11 @@ function App() {
     try {
       const fileBuffer = await file.arrayBuffer()
       const pdfData = new Uint8Array(fileBuffer)
-      const pdf = await pdfjsLib.getDocument({
-        data: pdfData,
-        disableWorker: true,
-      }).promise
+      const pdf = await runWithPdfWorkerDisabled(() =>
+        pdfjsLib.getDocument({
+          data: pdfData,
+        }).promise,
+      )
       const pages = []
       pageCount = pdf.numPages
 

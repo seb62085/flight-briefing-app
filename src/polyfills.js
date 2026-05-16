@@ -12,6 +12,28 @@ if (typeof Promise.withResolvers !== 'function') {
   }
 }
 
+if (typeof globalThis.structuredClone !== 'function') {
+  globalThis.structuredClone = function structuredClone(value) {
+    if (value instanceof ArrayBuffer) {
+      return value.slice(0)
+    }
+
+    if (ArrayBuffer.isView(value)) {
+      return new value.constructor(value)
+    }
+
+    if (value instanceof Map) {
+      return new Map(value)
+    }
+
+    if (value instanceof Set) {
+      return new Set(value)
+    }
+
+    return value
+  }
+}
+
 if (typeof Array.prototype.at !== 'function') {
   Array.prototype.at = function at(index) {
     const length = this.length
