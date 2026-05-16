@@ -8,6 +8,8 @@ Flight Briefing App is a browser-based iPad-friendly web app for uploading PDF f
 
 The app currently reads PDFs locally in the browser using `pdfjs-dist`. It extracts raw text and parses specific sections from National Airlines-style flight plans.
 
+iPad Safari compatibility note: `src/polyfills.js` is loaded from `src/main.jsx` before `App.jsx` imports PDF.js. This covers newer JavaScript helpers that may be missing on some iPadOS Safari versions.
+
 ## Current Deployment
 
 - GitHub repo: `https://github.com/seb62085/flight-briefing-app`
