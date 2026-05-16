@@ -20,6 +20,23 @@ body {
   padding: 32px;
 }
 
+.app-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.theme-toggle {
+  padding: 9px 14px;
+  background: #17212b;
+  color: white;
+  border: 1px solid #17212b;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: #2f6f8f;
@@ -62,6 +79,50 @@ h1 {
 
 .tab-panel {
   margin-top: 20px;
+}
+
+.tab-panel section,
+.tab-panel article,
+.upload-box {
+  scroll-margin-top: 18px;
+}
+
+.card-navigator {
+  position: fixed;
+  right: 12px;
+  top: 50%;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  width: 96px;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d8e0e7;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(23, 33, 43, 0.16);
+  transform: translateY(-50%);
+}
+
+.card-navigator button {
+  min-height: 34px;
+  padding: 7px 8px;
+  background: #f8fbfd;
+  color: #17212b;
+  border: 1px solid #d8e0e7;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.card-navigator button:hover,
+.card-navigator button:focus-visible {
+  background: #eef6fa;
+  border-color: #7aa7bd;
+  outline: none;
 }
 
 .empty-state {
@@ -285,11 +346,214 @@ h1 {
 }
 
 @media (max-width: 760px) {
+  .app {
+    padding: 14px 14px 76px;
+  }
+
+  .briefing-panel {
+    padding: 18px;
+  }
+
+  .app-header {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .card-navigator {
+    top: auto;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(82px, 1fr);
+    width: auto;
+    max-height: none;
+    overflow-x: auto;
+    transform: none;
+  }
+
+  .card-navigator button {
+    text-align: center;
+    white-space: nowrap;
+  }
+
   .admin-strip,
   .flight-strip,
   .airport-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.dark-mode {
+  background: #0d141b;
+  color: #e8eef3;
+}
+
+.dark-mode .briefing-panel {
+  background: #121c26;
+  border-color: #2a3a48;
+}
+
+.dark-mode .theme-toggle {
+  background: #e8eef3;
+  color: #121c26;
+  border-color: #e8eef3;
+}
+
+.dark-mode .tabs,
+.dark-mode .empty-state,
+.dark-mode .fuel-card,
+.dark-mode .lm-chit-card,
+.dark-mode .briefing-summary .admin-strip,
+.dark-mode .briefing-summary .flight-strip,
+.dark-mode .route-card,
+.dark-mode .alternate-card,
+.dark-mode .etp-card,
+.dark-mode .weather-section,
+.dark-mode .crew-card,
+.dark-mode .fak-card {
+  background: #172330;
+  border-color: #2a3a48;
+}
+
+.dark-mode .tabs button {
+  color: #b7c4cf;
+}
+
+.dark-mode .tabs button.active,
+.dark-mode .fuel-column div,
+.dark-mode .fuel-flags div,
+.dark-mode .fuel-total-row div,
+.dark-mode .fuel-footer-row div,
+.dark-mode .airport-grid article,
+.dark-mode .route-header div,
+.dark-mode .route-card p,
+.dark-mode .alternate-grid article,
+.dark-mode .etp-item,
+.dark-mode .etp-header div,
+.dark-mode .etp-validity div,
+.dark-mode .weather-card,
+.dark-mode .crew-row,
+.dark-mode .fak-header div,
+.dark-mode .fak-row,
+.dark-mode .lm-grid div,
+.dark-mode .lm-grid label,
+.dark-mode .file-card,
+.dark-mode .upload-box {
+  background: #101923;
+  border-color: #314456;
+  color: #e8eef3;
+}
+
+.dark-mode .upload-box {
+  border-color: #4c7f99;
+}
+
+.dark-mode .fuel-column .fuel-pair {
+  background: transparent;
+  border: 0;
+}
+
+.dark-mode .eyebrow,
+.dark-mode .airport-grid em,
+.dark-mode .fuel-column em,
+.dark-mode .route-header strong,
+.dark-mode .weather-card-header em,
+.dark-mode .crew-row em,
+.dark-mode .fak-row strong {
+  color: #7ec0df;
+}
+
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode strong,
+.dark-mode .fuel-column strong,
+.dark-mode .fuel-flags strong,
+.dark-mode .fuel-total-row strong,
+.dark-mode .fuel-footer-row strong,
+.dark-mode .mel-card strong,
+.dark-mode .weather-card-header strong,
+.dark-mode .weather-report p,
+.dark-mode .route-card p,
+.dark-mode .crew-row strong,
+.dark-mode .fak-header strong,
+.dark-mode .lm-grid strong,
+.dark-mode .lm-grid input,
+.dark-mode .fak-row span {
+  color: #eef5fa;
+}
+
+.dark-mode span,
+.dark-mode .status,
+.dark-mode .intro,
+.dark-mode .empty-state,
+.dark-mode .app-build,
+.dark-mode .admin-strip span,
+.dark-mode .flight-strip span,
+.dark-mode .airport-grid span,
+.dark-mode .fuel-column span,
+.dark-mode .fuel-flags span,
+.dark-mode .fuel-total-row span,
+.dark-mode .fuel-footer-row span,
+.dark-mode .alternate-grid span,
+.dark-mode .etp-header span,
+.dark-mode .etp-validity span,
+.dark-mode .weather-card-header span,
+.dark-mode .weather-report span,
+.dark-mode .crew-manifest h3,
+.dark-mode .crew-row span,
+.dark-mode .fak-header span,
+.dark-mode .lm-grid span {
+  color: #a9b7c3;
+}
+
+.dark-mode .status.success {
+  color: #75d6a8;
+}
+
+.dark-mode .mel-card {
+  background: #211e14;
+  border-color: #5a4f25;
+}
+
+.dark-mode .mel-card span {
+  color: #d8c369;
+}
+
+.dark-mode .mel-card p {
+  color: #e7dfc4;
+}
+
+.dark-mode .lm-grid input {
+  background: transparent;
+  border-bottom-color: #7ec0df;
+}
+
+.dark-mode .text-preview pre {
+  background: #080d12;
+  color: #e8eef3;
+}
+
+.dark-mode .card-navigator {
+  background: rgba(13, 20, 27, 0.94);
+  border-color: #314456;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.dark-mode .card-navigator button {
+  background: #172330;
+  color: #e8eef3;
+  border-color: #314456;
+}
+
+.dark-mode .card-navigator button:hover,
+.dark-mode .card-navigator button:focus-visible {
+  background: #223447;
+  border-color: #7ec0df;
 }
 .fuel-flags,
 .fuel-total-row {

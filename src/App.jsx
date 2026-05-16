@@ -277,7 +277,7 @@ function parseFakWeights(text) {
 
   const items = [
     ...fakSection.matchAll(
-      /([A-Z0-9 .\/]+?)\.{2,}\s*(\d+)\s+KGS/gi,
+      /([A-Z0-9 ./]+?)\.{2,}\s*(\d+)\s+KGS/gi,
     ),
   ].map((match) => {
     const label = match[1]
@@ -367,6 +367,88 @@ function getIcaoFromAirport(airport) {
   const match = airport.match(/\/([A-Z]{4})\b/)
 
   return match ? match[1] : null
+}
+
+function getWeatherAerodromes(summary) {
+  if (!summary) {
+    return []
+  }
+
+  return [
+    { label: 'Origin', airport: summary.origin },
+    { label: 'Destination', airport: summary.destination },
+    { label: 'Alternate', airport: summary.alternate },
+    ...summary.takeoffAlternates.map((airport) => ({
+      label: 'Takeoff Alternate',
+      airport,
+    })),
+    ...summary.enrouteAlternates.map((airport) => ({
+      label: 'Enroute Alternate',
+      airport,
+    })),
+  ]
+    .map((aerodrome) => ({
+      ...aerodrome,
+      icao: getIcaoFromAirport(aerodrome.airport),
+    }))
+    .filter((aerodrome) => aerodrome.icao)
+    .filter((aerodrome, index, allAerodromes) =>
+      allAerodromes.findIndex((item) => item.icao === aerodrome.icao) === index
+    )
+}
+
+function getCardLinks(activeTab, summary, pdfText) {
+  if (activeTab === 'home') {
+    return [
+      { id: 'upload-card', label: 'Upload' },
+      ...(pdfText ? [{ id: 'raw-text-card', label: 'Raw Text' }] : []),
+    ]
+  }
+
+  if (!summary) {
+    return []
+  }
+
+  if (activeTab === 'summary') {
+    return [
+      { id: 'flight-summary-card', label: 'Flight' },
+      ...(summary.takeoffAlternates.length > 0 || summary.enrouteAlternates.length > 0
+        ? [{ id: 'summary-alternates-card', label: 'Alternates' }]
+        : []),
+      ...(summary.fuel ? [{ id: 'fuel-card', label: 'Fuel' }] : []),
+      ...(summary.crew ? [{ id: 'crew-card', label: 'Crew' }] : []),
+    ]
+  }
+
+  if (activeTab === 'route') {
+    return [
+      ...(summary.route ? [{ id: 'route-card', label: 'Route' }] : []),
+      ...(summary.enrouteAlternates.length > 0 || summary.takeoffAlternates.length > 0
+        ? [{ id: 'route-alternates-card', label: 'Alternates' }]
+        : []),
+      ...(summary.etps.length > 0 ? [{ id: 'etp-card', label: 'ETP' }] : []),
+      ...getWeatherAerodromes(summary).map((aerodrome) => ({
+        id: `weather-${aerodrome.icao}`,
+        label: aerodrome.icao,
+      })),
+    ]
+  }
+
+  if (activeTab === 'lmChit') {
+    return [
+      { id: 'lm-chit-card', label: 'LM Chit' },
+      ...(summary.fakWeights ? [{ id: 'fak-card', label: 'FAK' }] : []),
+    ]
+  }
+
+  return []
+}
+
+function scrollToCard(id) {
+  document.getElementById(id)?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start',
+  })
 }
 
 function cleanWeatherText(text) {
@@ -507,8 +589,10 @@ function App() {
   const [summary, setSummary] = useState(null)
   const [showExtractedText, setShowExtractedText] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const [density, setDensity] = useState('')
   const [pic, setPic] = useState('')
+  const cardLinks = getCardLinks(activeTab, summary, pdfText)
 
   async function handleFileChange(event) {
     const file = event.target.files[0]
@@ -523,8 +607,8 @@ function App() {
     setShowExtractedText(false)
     setStatus('Reading PDF...')
 
-    let extractedText = ''
-    let pageCount = 0
+    let extractedText
+    let pageCount
 
     try {
       const fileBuffer = await readFileAsArrayBuffer(file)
@@ -568,10 +652,21 @@ function App() {
   }
 
   return (
-    <main className="app">
+    <main className={isDarkMode ? 'app dark-mode' : 'app'}>
       <section className="briefing-panel">
-        <p className="eyebrow">Flight Plan Parser</p>
-        <h1>Flight Briefing App</h1>
+        <div className="app-header">
+          <div>
+            <p className="eyebrow">Flight Plan Parser</p>
+            <h1>Flight Briefing App</h1>
+          </div>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={() => setIsDarkMode((currentValue) => !currentValue)}
+          >
+            {isDarkMode ? 'Light' : 'Dark'}
+          </button>
+        </div>
 
         <nav className="tabs" aria-label="Briefing sections">
           {[
@@ -593,7 +688,7 @@ function App() {
 
         {activeTab === 'home' && (
           <section className="tab-panel">
-            <label className="upload-box">
+            <label className="upload-box" id="upload-card">
               <span>Choose a PDF flight plan</span>
               <input type="file" accept="application/pdf" onChange={handleFileChange} />
             </label>
@@ -609,7 +704,7 @@ function App() {
             <p className="app-build">{APP_BUILD}</p>
 
             {pdfText && (
-              <section className="text-preview">
+              <section className="text-preview" id="raw-text-card">
                 <button
                   type="button"
                   className="text-toggle"
@@ -626,11 +721,11 @@ function App() {
 
         {activeTab === 'summary' && (
           <section className="tab-panel">
-            {!summary && <p className="empty-state">Upload a PDF on the Home tab first.</p>}
+            {!summary && <p className="empty-state">Upload a PDF on the Upload tab first.</p>}
 
             {summary && (
               <>
-                <section className="briefing-summary">
+                <section className="briefing-summary" id="flight-summary-card">
                   <div className="admin-strip">
                     <div>
                       <span>Plan</span>
@@ -690,14 +785,15 @@ function App() {
                   {(summary.takeoffAlternates.length > 0 ||
                     summary.enrouteAlternates.length > 0) && (
                     <ExtraAlternates
+                      id="summary-alternates-card"
                       takeoffAlternates={summary.takeoffAlternates}
                       enrouteAlternates={summary.enrouteAlternates}
                     />
                   )}
                 </section>
 
-                {summary.fuel && <FuelCard fuel={summary.fuel} />}
-                {summary.crew && <CrewCard crew={summary.crew} />}
+                {summary.fuel && <FuelCard fuel={summary.fuel} id="fuel-card" />}
+                {summary.crew && <CrewCard crew={summary.crew} id="crew-card" />}
               </>
             )}
           </section>
@@ -708,7 +804,7 @@ function App() {
             {!summary?.route && <p className="empty-state">No route data parsed yet.</p>}
 
             {summary?.route && (
-              <section className="route-card">
+              <section className="route-card" id="route-card">
                 <div className="route-header">
                   <h2>Route Summary</h2>
                   <div>
@@ -727,12 +823,13 @@ function App() {
 
             {summary?.enrouteAlternates?.length > 0 && (
               <ExtraAlternates
+                id="route-alternates-card"
                 takeoffAlternates={summary.takeoffAlternates}
                 enrouteAlternates={summary.enrouteAlternates}
               />
             )}
 
-            {summary?.etps?.length > 0 && <EtpCard etps={summary.etps} />}
+            {summary?.etps?.length > 0 && <EtpCard etps={summary.etps} id="etp-card" />}
 
             {summary && (
               <AerodromeWeatherCards
@@ -744,11 +841,11 @@ function App() {
 
         {activeTab === 'lmChit' && (
           <section className="tab-panel">
-            {!summary && <p className="empty-state">Upload a PDF on the Home tab first.</p>}
+            {!summary && <p className="empty-state">Upload a PDF on the Upload tab first.</p>}
 
             {summary && (
               <>
-                <section className="lm-chit-card">
+                <section className="lm-chit-card" id="lm-chit-card">
                   <h2>LM Chit</h2>
 
                   <div className="lm-grid">
@@ -795,7 +892,7 @@ function App() {
                 </section>
 
                 {summary.fakWeights && (
-                  <section className="fak-card">
+                  <section className="fak-card" id="fak-card">
                     <div className="fak-header">
                       <h2>FAK Weights</h2>
                       <div>
@@ -819,13 +916,31 @@ function App() {
           </section>
         )}
       </section>
+
+      <CardNavigator links={cardLinks} />
     </main>
   )
 }
 
-function FuelCard({ fuel }) {
+function CardNavigator({ links }) {
+  if (links.length === 0) {
+    return null
+  }
+
   return (
-    <section className="fuel-card">
+    <nav className="card-navigator" aria-label="Cards in this tab">
+      {links.map((link) => (
+        <button type="button" key={link.id} onClick={() => scrollToCard(link.id)}>
+          {link.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+function FuelCard({ fuel, id }) {
+  return (
+    <section className="fuel-card" id={id}>
       <h2>Fuel Summary</h2>
 
       <div className="fuel-flags">
@@ -938,9 +1053,9 @@ function FuelCard({ fuel }) {
   )
 }
 
-function CrewCard({ crew }) {
+function CrewCard({ crew, id }) {
   return (
-    <section className="crew-card">
+    <section className="crew-card" id={id}>
       <h2>Crew</h2>
 
       <div className="crew-columns">
@@ -982,9 +1097,9 @@ function CrewCard({ crew }) {
   )
 }
 
-function ExtraAlternates({ takeoffAlternates, enrouteAlternates }) {
+function ExtraAlternates({ takeoffAlternates, enrouteAlternates, id }) {
   return (
-    <section className="alternate-card">
+    <section className="alternate-card" id={id}>
       <h2>Additional Alternates</h2>
 
       <div className="alternate-grid">
@@ -1006,9 +1121,9 @@ function ExtraAlternates({ takeoffAlternates, enrouteAlternates }) {
   )
 }
 
-function EtpCard({ etps }) {
+function EtpCard({ etps, id }) {
   return (
-    <section className="etp-card">
+    <section className="etp-card" id={id}>
       <h2>ETP</h2>
 
       <div className="etp-list">
@@ -1047,27 +1162,7 @@ function EtpCard({ etps }) {
 }
 
 function AerodromeWeatherCards({ summary }) {
-  const aerodromes = [
-    { label: 'Origin', airport: summary.origin },
-    { label: 'Destination', airport: summary.destination },
-    { label: 'Alternate', airport: summary.alternate },
-    ...summary.takeoffAlternates.map((airport) => ({
-      label: 'Takeoff Alternate',
-      airport,
-    })),
-    ...summary.enrouteAlternates.map((airport) => ({
-      label: 'Enroute Alternate',
-      airport,
-    })),
-  ]
-    .map((aerodrome) => ({
-      ...aerodrome,
-      icao: getIcaoFromAirport(aerodrome.airport),
-    }))
-    .filter((aerodrome) => aerodrome.icao)
-    .filter((aerodrome, index, allAerodromes) =>
-      allAerodromes.findIndex((item) => item.icao === aerodrome.icao) === index
-    )
+  const aerodromes = getWeatherAerodromes(summary)
 
   return (
     <section className="weather-section">
@@ -1078,7 +1173,7 @@ function AerodromeWeatherCards({ summary }) {
           const weather = summary.weather[aerodrome.icao]
 
           return (
-            <article className="weather-card" key={aerodrome.icao}>
+            <article className="weather-card" id={`weather-${aerodrome.icao}`} key={aerodrome.icao}>
               <div className="weather-card-header">
                 <div>
                   <span>{aerodrome.label}</span>

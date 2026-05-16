@@ -26,6 +26,10 @@ File upload compatibility note: uploaded PDFs are read through `readFileAsArrayB
   - PDF file picker
   - parse status
   - collapsible raw extracted text
+  - dark/light mode toggle in the app header
+- Card navigator
+  - sticky side rail on desktop, bottom rail on mobile
+  - changes by active tab and jumps to the selected briefing card
 - Summary
   - admin strip: plan, trip, compute time, revision, dispatcher
   - flight strip: date, flight, registration
