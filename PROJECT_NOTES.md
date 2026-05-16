@@ -8,7 +8,9 @@ Flight Briefing App is a browser-based iPad-friendly web app for uploading PDF f
 
 The app currently reads PDFs locally in the browser using `pdfjs-dist`. It extracts raw text and parses specific sections from National Airlines-style flight plans.
 
-iPad Safari compatibility note: `src/polyfills.js` is loaded from `src/main.jsx` before `App.jsx` imports PDF.js. The app uses the `pdfjs-dist/legacy` build and forces PDF.js onto its fake-worker path while reading files so iPad browsers do not fail inside a module worker context that cannot see the app polyfills. The polyfills include `structuredClone` and `String.prototype.matchAll`, because missing browser APIs on older iPad WebKit can otherwise look like PDF-read failures.
+iPad Safari compatibility note: `src/polyfills.js` is loaded from `src/main.jsx` before `App.jsx` imports PDF.js. The app uses `pdfjs-dist@3.11.174` with the `pdfjs-dist/legacy` build because PDF.js v5 repeatedly failed on iPad/iPhone WebKit with `undefined is not a function` during PDF reading. The app also forces PDF.js onto its fake-worker path while reading files so iPad browsers do not fail inside a module worker context that cannot see the app polyfills. The polyfills include `structuredClone` and `String.prototype.matchAll`, because missing browser APIs on older iPad WebKit can otherwise look like PDF-read failures.
+
+File upload compatibility note: uploaded PDFs are read through `readFileAsArrayBuffer`. It uses `file.arrayBuffer()` when available and falls back to `FileReader.readAsArrayBuffer(file)` for older iPad/iPhone WebKit versions where `file.arrayBuffer` may be undefined.
 
 ## Current Deployment
 

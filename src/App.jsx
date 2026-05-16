@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
-import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url'
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.js?url'
 import './App.css'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
+
+const APP_BUILD = `iOS PDF test - PDF.js ${pdfjsLib.version}`
 
 function findMatch(text, patterns) {
   for (const pattern of patterns) {
@@ -54,6 +56,20 @@ async function runWithPdfWorkerDisabled(callback) {
   } finally {
     globalThis.Worker = originalWorker
   }
+}
+
+function readFileAsArrayBuffer(file) {
+  if (typeof file.arrayBuffer === 'function') {
+    return file.arrayBuffer()
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(reader.error ?? new Error('FileReader failed.'))
+    reader.readAsArrayBuffer(file)
+  })
 }
 
 function formatMelNumber(rawMelNumber) {
@@ -511,7 +527,7 @@ function App() {
     let pageCount = 0
 
     try {
-      const fileBuffer = await file.arrayBuffer()
+      const fileBuffer = await readFileAsArrayBuffer(file)
       const pdfData = new Uint8Array(fileBuffer)
       const pdf = await runWithPdfWorkerDisabled(() =>
         pdfjsLib.getDocument({
@@ -590,6 +606,7 @@ function App() {
             )}
 
             <p className={summary ? 'status success' : 'status'}>{status}</p>
+            <p className="app-build">{APP_BUILD}</p>
 
             {pdfText && (
               <section className="text-preview">
