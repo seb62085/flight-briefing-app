@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url'
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url'
 import './App.css'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
@@ -499,7 +499,10 @@ function App() {
     try {
       const fileBuffer = await file.arrayBuffer()
       const pdfData = new Uint8Array(fileBuffer)
-      const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise
+      const pdf = await pdfjsLib.getDocument({
+        data: pdfData,
+        disableWorker: true,
+      }).promise
       const pages = []
 
       for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
