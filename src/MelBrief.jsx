@@ -18,6 +18,6 @@ export default function MelBrief({ summary, values, onEdit }) {
         <td><textarea aria-label={`Captain’s comments for ${item.melNumber}, DMI ${item.dmiNumber}, item ${index + 1}`} value={values[key] ?? ''} onChange={(event) => onEdit(key,event.target.value)} rows={4} /><div className="mel-print-comments">{values[key]}</div></td>
       </tr>
     })}</tbody></table></div>}
-    <p className="tool-note">Comments are saved with the last flight on this device. Expiry colours follow CFDS REV 05: within two days, due today, or expired. Verify entries against the aircraft logbook.</p>
+    <p className="tool-note">Comments are saved with the last flight on this device. Expiry highlights flag items due within two days, due today, or expired. Verify entries against the aircraft logbook.</p>
   </section>
 }

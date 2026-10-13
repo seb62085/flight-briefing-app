@@ -1,5 +1,5 @@
 // Preflight items transcribed from the supplied iPad screen recording.
-// Oceanic items adapted from CFDS REV 05 MASTER.xlsx, WKSHT M18:M36.
+// Oceanic items adapted from the supplied reference worksheet, M18:M36.
 export const preflightColumns = [
   [
     { id: 'exterior', label: 'Exterior inspection' },

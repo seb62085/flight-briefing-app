@@ -40,6 +40,6 @@ export default function Checklist({ summary, values, onChange, saveStatus }) {
       <p className="tool-note">{oceanic ? 'Oceanic checks are included in the flight’s progress below.' : 'Enable to include preparation, entry, and oceanic / exit checks.'}</p>
     </section>
     {oceanic && oceanicGroups.map((group) => <CheckSection key={group.id} id={group.id} title={group.title} items={group.items} values={values} onEdit={edit} />)}
-    <p className="tool-note">Personal briefing aid, based on your screen recording and CFDS REV 05 oceanic worksheet. Follow current company procedures.</p>
+    <p className="tool-note">Personal briefing aid. Follow current company procedures.</p>
   </div>
 }

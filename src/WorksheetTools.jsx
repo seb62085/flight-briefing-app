@@ -44,7 +44,7 @@ export default function WorksheetTools({ summary, values, onEdit, density, onDen
         <Field label="ZFW (kg)" value={zfw} onChange={edit('zfw')} />
         <Field label="Max landing weight (t)" value={landing} onChange={edit('landingLimit')} />
       </div>
-      <p className="tool-note">CFDS REV 05 worksheet formula · workbook landing limit for {summary.aircraftRegistration}. Confirm the aircraft limit or enter it above. Workbook cap: 164 t.</p>
+      <p className="tool-note">Landing limit for {summary.aircraftRegistration}. Confirm the aircraft limit or enter it above. Workbook cap: 164 t.</p>
     </section>
     <section className="worksheet-card" id="distribution-card">
       <h2>Fuel distribution</h2>
@@ -58,7 +58,7 @@ export default function WorksheetTools({ summary, values, onEdit, density, onDen
           <div className="reserve-tank"><Result label="Reserve #3">{format(distribution[7] / 1000)} t</Result></div>
         </div>
       </> : <p className="tool-note">Enter 20–163 t, the range covered by the colleague’s workbook. No tank allocation is extrapolated beyond that table.</p>}
-      <p className="tool-note">CFDS REV 05 fuel-loading reference at standard density. Confirm applicability to the aircraft and fuel density before use.</p>
+      <p className="tool-note">Fuel-loading reference at standard density. Confirm applicability to the aircraft and fuel density before use.</p>
     </section>
     <section className="worksheet-card" id="density-card">
       <h2>Fuel density &amp; uplift calculator</h2>
@@ -99,7 +99,7 @@ export default function WorksheetTools({ summary, values, onEdit, density, onDen
         <Result label="Latest out time">{displayUtc(duty?.out)}</Result>
         <Result label="Workbook duty limit">{duty ? `${duty.limit} hours` : '—'}</Result>
       </div>
-      <p className="tool-note">CFDS REV 05 rules: domestic 16/18/20 h and international 16/30/30 h for 2/3/4 pilots. Latest out = duty off − flight time − 50 min. Day offsets are relative to the duty-on date. Confirm inferred rules and pilot count; overrides remain editable.</p>
+      <p className="tool-note">Duty limits: domestic 16/18/20 h and international 16/30/30 h for 2/3/4 pilots. Latest out = duty off − flight time − 50 min. Day offsets are relative to the duty-on date. Confirm inferred rules and pilot count; overrides remain editable.</p>
     </section>
     )}
   </>

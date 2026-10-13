@@ -70,7 +70,7 @@ npm run build
 
 The **MEL Brief** tab extracts MEL number, due date, DMI number, and description from the PDF. Add captain’s comments to each row and use **Print MEL brief** for paper or PDF output. Expiry highlighting uses the displayed UTC reference date (defaults to the flight-plan date); duplicate DMI numbers are flagged. Comments and worksheet edits are retained with the last saved flight and restored offline.
 
-The **Summary** includes tools adapted from `CFDS REV 05 MASTER.xlsx` (20 May 2026):
+The **Summary** includes the following fuel and duty tools:
 
 - **Absolute max fuel per FP burn:** uses the workbook aircraft landing-weight lookup, parsed burn and ZFW, its intermediate rounding, and its 164 t cap. Missing values require input; aircraft limits can be overridden.
 - **Duty times:** enter duty-on time in UTC and confirm pilot count and domestic/international rules. Workbook limits are 16/18/20 hours domestically and 16/30/30 internationally for 2/3/4 pilots. Latest out subtracts planned flight time and 50 minutes from latest duty off. Additional loading time defaults to zero. Day offsets are relative to the duty-on date. These are workbook calculations, not a comprehensive duty-rules engine.
@@ -87,7 +87,7 @@ After deploying an update, existing offline installations may need all app tabs/
 
 ## Flight checklist
 
-After uploading a flight, open **Checklist**. The preflight columns follow the supplied iPad app screen recording, with large touch targets and green reviewed items. Enable **Oceanic flight** to add the CFDS worksheet’s preparation, entry, and oceanic/exit reminders; only enabled sections contribute to the overall progress.
+After uploading a flight, open **Checklist**. The preflight columns follow the supplied iPad app screen recording, with large touch targets and green reviewed items. Enable **Oceanic flight** to add preparation, entry, and oceanic/exit reminders; only enabled sections contribute to the overall progress.
 
 Checklist marks and the oceanic selection are saved with the current flight and restored offline. Disabling oceanic mode keeps its marks for later re-enabling. **Reset checklist** asks for confirmation, clears checklist marks, and preserves the oceanic selection and other briefing inputs. A successful new PDF upload starts a fresh checklist; a failed upload preserves the current flight’s progress.
 
