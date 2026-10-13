@@ -84,3 +84,11 @@ node --test tests/*.test.mjs
 ```
 
 After deploying an update, existing offline installations may need all app tabs/Home Screen windows closed and reopened online for the new service worker to activate.
+
+## Flight checklist
+
+After uploading a flight, open **Checklist**. The preflight columns and departure briefings follow the supplied iPad app screen recording, with large touch targets and green reviewed items. Conditional checks offer **N/A**. Enable **Oceanic flight** to add the CFDS worksheet’s preparation, entry, and oceanic/exit reminders; only enabled sections contribute to the overall progress.
+
+Checklist marks and the oceanic selection are saved with the current flight and restored offline. Disabling oceanic mode keeps its marks for later re-enabling. **Reset checklist** asks for confirmation, clears checklist marks, and preserves the oceanic selection and other briefing inputs. A successful new PDF upload starts a fresh checklist; a failed upload preserves the current flight’s progress.
+
+Summary order is Flight, Fuel Summary, maximum fuel/distribution/density tools, Crew, then Duty Times.

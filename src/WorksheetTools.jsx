@@ -10,7 +10,7 @@ function Result({ label, children }) {
 const parsedValue = (value) => numberOrNull(value) === null ? '' : value
 const format = (value, digits = 1) => value === null || value === undefined ? '—' : value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
-export default function WorksheetTools({ summary, values, onEdit, density, onDensity }) {
+export default function WorksheetTools({ summary, values, onEdit, density, onDensity, section = 'fuel' }) {
   const fuel = summary.fuel
   const get = (key, fallback = '') => values[key] ?? fallback
   const edit = (key) => (value) => onEdit(key, value)
@@ -36,6 +36,7 @@ export default function WorksheetTools({ summary, values, onEdit, density, onDen
   const requiredKg = numberOrNull(start) !== null && numberOrNull(ramp) !== null && Number(ramp) >= Number(start) ? (Number(ramp) - Number(start)) * 1000 : null
   const expectedLitres = requiredKg !== null && Number(densityM3) > 0 ? requiredKg / (Number(densityM3) / 1000) : null
   return <>
+    {section === 'fuel' && <>
     <section className="worksheet-card max-fuel-card" id="max-fuel-card">
       <Result label="Absolute max fuel per FP burn">{maximum === null ? 'Enter missing weights' : `${format(maximum, 0)} t`}</Result>
       <div className="tool-grid">
@@ -44,22 +45,6 @@ export default function WorksheetTools({ summary, values, onEdit, density, onDen
         <Field label="Max landing weight (t)" value={landing} onChange={edit('landingLimit')} />
       </div>
       <p className="tool-note">CFDS REV 05 worksheet formula · workbook landing limit for {summary.aircraftRegistration}. Confirm the aircraft limit or enter it above. Workbook cap: 164 t.</p>
-    </section>
-    <section className="worksheet-card" id="duty-card">
-      <h2>Duty times</h2>
-      <div className="tool-grid">
-        <Field label="Duty on (UTC)" type="time" value={get('dutyOn')} onChange={edit('dutyOn')} />
-        <label className="tool-field"><span>Duty rules</span><select aria-label="Duty rules" value={rules} onChange={(event) => onEdit('rules', event.target.value)}><option value="">Select rules</option><option value="domestic">Domestic (CONUS)</option><option value="international">International (OCONUS)</option></select></label>
-        <label className="tool-field"><span>Flight deck pilots</span><select aria-label="Flight deck pilots" value={pilots} onChange={(event) => onEdit('pilots', event.target.value)}><option value="">Select pilots</option>{[2,3,4].map((count) => <option key={count} value={count}>{count} pilots</option>)}</select></label>
-        <Field label="Flight time (HH:MM)" type="text" inputMode="numeric" placeholder="12:30" value={flightTime} onChange={edit('flightTime')} />
-        <Field label="Additional loading time (min)" value={get('loadingMinutes', '0')} onChange={edit('loadingMinutes')} />
-      </div>
-      <div className="tool-grid">
-        <Result label="Latest duty off">{displayUtc(duty?.off)}</Result>
-        <Result label="Latest out time">{displayUtc(duty?.out)}</Result>
-        <Result label="Workbook duty limit">{duty ? `${duty.limit} hours` : '—'}</Result>
-      </div>
-      <p className="tool-note">CFDS REV 05 rules: domestic 16/18/20 h and international 16/30/30 h for 2/3/4 pilots. Latest out = duty off − flight time − 50 min. Day offsets are relative to the duty-on date. Confirm inferred rules and pilot count; overrides remain editable.</p>
     </section>
     <section className="worksheet-card" id="distribution-card">
       <h2>Fuel distribution</h2>
@@ -98,5 +83,24 @@ export default function WorksheetTools({ summary, values, onEdit, density, onDen
       {uplift?.percent > 3 && <p className="tool-warning">Fuel difference exceeds 3%, the workbook check threshold.</p>}
       <p className="tool-note">Use measured density. Expected uplift uses this density; 1 US gallon = 3.78541178 L. Density is shared with LM Chit. Blank inputs do not assume a standard density.</p>
     </section>
+    </>}
+    {section === 'duty' && (
+    <section className="worksheet-card" id="duty-card">
+      <h2>Duty times</h2>
+      <div className="tool-grid">
+        <Field label="Duty on (UTC)" type="time" value={get('dutyOn')} onChange={edit('dutyOn')} />
+        <label className="tool-field"><span>Duty rules</span><select aria-label="Duty rules" value={rules} onChange={(event) => onEdit('rules', event.target.value)}><option value="">Select rules</option><option value="domestic">Domestic (CONUS)</option><option value="international">International (OCONUS)</option></select></label>
+        <label className="tool-field"><span>Flight deck pilots</span><select aria-label="Flight deck pilots" value={pilots} onChange={(event) => onEdit('pilots', event.target.value)}><option value="">Select pilots</option>{[2,3,4].map((count) => <option key={count} value={count}>{count} pilots</option>)}</select></label>
+        <Field label="Flight time (HH:MM)" type="text" inputMode="numeric" placeholder="12:30" value={flightTime} onChange={edit('flightTime')} />
+        <Field label="Additional loading time (min)" value={get('loadingMinutes', '0')} onChange={edit('loadingMinutes')} />
+      </div>
+      <div className="tool-grid">
+        <Result label="Latest duty off">{displayUtc(duty?.off)}</Result>
+        <Result label="Latest out time">{displayUtc(duty?.out)}</Result>
+        <Result label="Workbook duty limit">{duty ? `${duty.limit} hours` : '—'}</Result>
+      </div>
+      <p className="tool-note">CFDS REV 05 rules: domestic 16/18/20 h and international 16/30/30 h for 2/3/4 pilots. Latest out = duty off − flight time − 50 min. Day offsets are relative to the duty-on date. Confirm inferred rules and pilot count; overrides remain editable.</p>
+    </section>
+    )}
   </>
 }

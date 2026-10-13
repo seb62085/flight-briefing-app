@@ -4,6 +4,7 @@ import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.js?url'
 import './App.css'
 import WorksheetTools from './WorksheetTools.jsx'
 import MelBrief from './MelBrief.jsx'
+import Checklist from './Checklist.jsx'
 import { parseMelItems } from './briefingCalculations.js'
 import { loadLastFlight, saveLastFlight, saveFlightEdits } from './flightStorage.js'
 import { useOffline } from './useOffline.js'
@@ -387,16 +388,16 @@ function getCardLinks(activeTab, summary, pdfText) {
 
   if (activeTab === 'summary') {
     return [
-      { id: 'max-fuel-card', label: 'Max Fuel' },
-      { id: 'duty-card', label: 'Duty' },
-      { id: 'distribution-card', label: 'Tanks' },
-      { id: 'density-card', label: 'Density' },
       { id: 'flight-summary-card', label: 'Flight' },
       ...(summary.takeoffAlternates.length > 0 || summary.enrouteAlternates.length > 0
         ? [{ id: 'summary-alternates-card', label: 'Alternates' }]
         : []),
       ...(summary.fuel ? [{ id: 'fuel-card', label: 'Fuel' }] : []),
+      { id: 'max-fuel-card', label: 'Max Fuel' },
+      { id: 'distribution-card', label: 'Tanks' },
+      { id: 'density-card', label: 'Density' },
       ...(summary.crew ? [{ id: 'crew-card', label: 'Crew' }] : []),
+      { id: 'duty-card', label: 'Duty' },
     ]
   }
 
@@ -413,6 +414,12 @@ function getCardLinks(activeTab, summary, pdfText) {
       })),
     ]
   }
+
+  if (activeTab === 'checklist') return [
+    { id: 'preflight-checklist', label: 'Preflight' },
+    { id: 'departure-checklist', label: 'Departure' },
+    { id: 'oceanic-checklist', label: 'Oceanic' },
+  ]
 
   if (activeTab === 'mel') return [{ id: 'mel-card', label: 'MEL Brief' }]
 
@@ -579,6 +586,7 @@ function App() {
   const [pic, setPic] = useState('')
   const [worksheet, setWorksheet] = useState({})
   const [melBrief, setMelBrief] = useState({})
+  const [checklist, setChecklist] = useState({})
   const [restoring, setRestoring] = useState(true)
   const [reading, setReading] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
@@ -604,6 +612,7 @@ function App() {
       setDensity(flight.density ?? '')
       setWorksheet(flight.worksheet ?? {})
       setMelBrief(flight.melBrief ?? {})
+      setChecklist(flight.checklist ?? {})
       setStatus(`Restored ${flight.fileName} (${flight.pageCount} pages).`)
       setSaveStatus('Last flight saved on this device.')
     }).catch((error) => {
@@ -622,6 +631,7 @@ function App() {
     if (field === 'density') setDensity(value)
     const id = savedFlightId.current
     if (!id) return
+    setSaveStatus('Saving flight on this device...')
     saveFlightEdits(id, { [field]: value }).then(() => {
       if (savedFlightId.current === id) setSaveStatus('Last flight saved on this device.')
     }).catch(() => {
@@ -707,11 +717,12 @@ function App() {
     setDensity('')
     setWorksheet({})
     setMelBrief({})
+    setChecklist({})
     savedFlightId.current = null
     setSaveStatus('Saving flight on this device...')
     try {
       await saveLastFlight({ id, fileName: file.name, pdf: file, pdfText: extractedText,
-        pageCount, pic: initialPic, density: '', worksheet: {}, melBrief: {}, savedAt: new Date().toISOString() })
+        pageCount, pic: initialPic, density: '', worksheet: {}, melBrief: {}, checklist: {}, savedAt: new Date().toISOString() })
       savedFlightId.current = id
       setSaveStatus('Last flight saved on this device.')
       // Browsers may grant persistent storage to protect saved flights from eviction.
@@ -748,6 +759,7 @@ function App() {
             ['route', 'Route'],
             ['lmChit', 'LM Chit'],
             ['mel', 'MEL Brief'],
+            ['checklist', 'Checklist'],
           ].map(([tabId, label]) => (
             <button
               type="button"
@@ -805,7 +817,6 @@ function App() {
 
             {summary && (
               <>
-                <WorksheetTools summary={summary} values={worksheet} onEdit={(key, value) => editBriefing('worksheet', key, value)} density={density} onDensity={(value) => editChit('density', value)} />
                 <section className="briefing-summary" id="flight-summary-card">
                   <div className="admin-strip">
                     <div>
@@ -874,9 +885,17 @@ function App() {
                 </section>
 
                 {summary.fuel && <FuelCard fuel={summary.fuel} id="fuel-card" />}
+                <WorksheetTools summary={summary} values={worksheet} onEdit={(key, value) => editBriefing('worksheet', key, value)} density={density} onDensity={(value) => editChit('density', value)} />
                 {summary.crew && <CrewCard crew={summary.crew} id="crew-card" />}
+                <WorksheetTools section="duty" summary={summary} values={worksheet} onEdit={(key, value) => editBriefing('worksheet', key, value)} density={density} onDensity={(value) => editChit('density', value)} />
               </>
             )}
+          </section>
+        )}
+
+        {activeTab === 'checklist' && (
+          <section className="tab-panel">
+            {summary ? <Checklist summary={summary} values={checklist} saveStatus={saveStatus} onChange={(next) => { setChecklist(next); editChit('checklist', next) }} /> : <p className="empty-state">Upload a PDF on the Upload tab to start a checklist for this flight.</p>}
           </section>
         )}
 
