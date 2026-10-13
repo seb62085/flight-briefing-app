@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.js?url'
 import './App.css'
+import WorksheetTools from './WorksheetTools.jsx'
+import MelBrief from './MelBrief.jsx'
+import { parseMelItems } from './briefingCalculations.js'
 import { loadLastFlight, saveLastFlight, saveFlightEdits } from './flightStorage.js'
 import { useOffline } from './useOffline.js'
 
@@ -72,35 +75,6 @@ function readFileAsArrayBuffer(file) {
     reader.onerror = () => reject(reader.error ?? new Error('FileReader failed.'))
     reader.readAsArrayBuffer(file)
   })
-}
-
-function formatMelNumber(rawMelNumber) {
-  const digits = rawMelNumber.replace(/^M/i, '')
-
-  return `MEL ${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`
-}
-
-function parseMelItems(text) {
-  const melSection = findMatch(text, [
-    /END REMARKS\/+\s+THIS\s+FLIGHT PLAN.*?FAA NOTICES\s+(.*?)(?=NATIONAL\s+AIRLINES)/i,
-  ])
-
-  if (melSection === 'Not found') {
-    return []
-  }
-
-  const melMatches = [
-    ...melSection.matchAll(
-      /(M\d{8})\s+\/\s+EXPIRES DD-MM-YY\s+([0-9]{2}-[0-9]{2}-[0-9]{2})\s+\/\s+DMI#\s+(\d+)\s+(.*?)(?=\s+M\d{8}\s+\/\s+EXPIRES DD-MM-YY|\s+NATIONAL\s+AIRLINES|$)/gi,
-    ),
-  ]
-
-  return melMatches.map((match) => ({
-    melNumber: formatMelNumber(match[1]),
-    expiryDate: match[2].trim(),
-    dmiNumber: match[3].trim(),
-    note: match[4].trim(),
-  }))
 }
 
 function calculateAlternatePlusReserve(alternateFuel) {
@@ -413,6 +387,10 @@ function getCardLinks(activeTab, summary, pdfText) {
 
   if (activeTab === 'summary') {
     return [
+      { id: 'max-fuel-card', label: 'Max Fuel' },
+      { id: 'duty-card', label: 'Duty' },
+      { id: 'distribution-card', label: 'Tanks' },
+      { id: 'density-card', label: 'Density' },
       { id: 'flight-summary-card', label: 'Flight' },
       ...(summary.takeoffAlternates.length > 0 || summary.enrouteAlternates.length > 0
         ? [{ id: 'summary-alternates-card', label: 'Alternates' }]
@@ -435,6 +413,8 @@ function getCardLinks(activeTab, summary, pdfText) {
       })),
     ]
   }
+
+  if (activeTab === 'mel') return [{ id: 'mel-card', label: 'MEL Brief' }]
 
   if (activeTab === 'lmChit') {
     return [
@@ -597,6 +577,8 @@ function App() {
   })
   const [density, setDensity] = useState('')
   const [pic, setPic] = useState('')
+  const [worksheet, setWorksheet] = useState({})
+  const [melBrief, setMelBrief] = useState({})
   const [restoring, setRestoring] = useState(true)
   const [reading, setReading] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
@@ -620,6 +602,8 @@ function App() {
       setSummary(parsedSummary)
       setPic(flight.pic ?? '')
       setDensity(flight.density ?? '')
+      setWorksheet(flight.worksheet ?? {})
+      setMelBrief(flight.melBrief ?? {})
       setStatus(`Restored ${flight.fileName} (${flight.pageCount} pages).`)
       setSaveStatus('Last flight saved on this device.')
     }).catch((error) => {
@@ -643,6 +627,14 @@ function App() {
     }).catch(() => {
       if (savedFlightId.current === id) setSaveStatus('Could not save your latest edits on this device.')
     })
+  }
+
+  function editBriefing(group, key, value) {
+    const current = group === 'worksheet' ? worksheet : melBrief
+    const next = { ...current, [key]: value }
+    if (group === 'worksheet') setWorksheet(next)
+    else setMelBrief(next)
+    editChit(group, next)
   }
 
   async function handleFileChange(event) {
@@ -713,11 +705,13 @@ function App() {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const initialPic = parsedSummary.fuel?.pic === 'Not found' ? '' : parsedSummary.fuel?.pic ?? ''
     setDensity('')
+    setWorksheet({})
+    setMelBrief({})
     savedFlightId.current = null
     setSaveStatus('Saving flight on this device...')
     try {
       await saveLastFlight({ id, fileName: file.name, pdf: file, pdfText: extractedText,
-        pageCount, pic: initialPic, density: '', savedAt: new Date().toISOString() })
+        pageCount, pic: initialPic, density: '', worksheet: {}, melBrief: {}, savedAt: new Date().toISOString() })
       savedFlightId.current = id
       setSaveStatus('Last flight saved on this device.')
       // Browsers may grant persistent storage to protect saved flights from eviction.
@@ -753,6 +747,7 @@ function App() {
             ['summary', 'Summary'],
             ['route', 'Route'],
             ['lmChit', 'LM Chit'],
+            ['mel', 'MEL Brief'],
           ].map(([tabId, label]) => (
             <button
               type="button"
@@ -810,6 +805,7 @@ function App() {
 
             {summary && (
               <>
+                <WorksheetTools summary={summary} values={worksheet} onEdit={(key, value) => editBriefing('worksheet', key, value)} density={density} onDensity={(value) => editChit('density', value)} />
                 <section className="briefing-summary" id="flight-summary-card">
                   <div className="admin-strip">
                     <div>
@@ -881,6 +877,12 @@ function App() {
                 {summary.crew && <CrewCard crew={summary.crew} id="crew-card" />}
               </>
             )}
+          </section>
+        )}
+
+        {activeTab === 'mel' && (
+          <section className="tab-panel mel-panel">
+            {summary ? <MelBrief summary={summary} values={melBrief} onEdit={(key, value) => editBriefing('melBrief', key, value)} /> : <p className="empty-state">Upload a PDF on the Upload tab first.</p>}
           </section>
         )}
 
@@ -957,7 +959,7 @@ function App() {
                       <strong>{summary.fuel?.payload ?? 'Not found'}</strong>
                     </div>
                     <label>
-                      <span>Density</span>
+                      <span>Density (kg/L)</span>
                       <input
                         type="text"
                         inputMode="decimal"

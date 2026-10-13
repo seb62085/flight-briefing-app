@@ -65,3 +65,22 @@ Build the production version:
 ```bash
 npm run build
 ```
+
+## MEL Brief and worksheet tools
+
+The **MEL Brief** tab extracts MEL number, due date, DMI number, and description from the PDF. Add captain’s comments to each row and use **Print MEL brief** for paper or PDF output. Expiry highlighting uses the displayed UTC reference date (defaults to the flight-plan date); duplicate DMI numbers are flagged. Comments and worksheet edits are retained with the last saved flight and restored offline.
+
+The **Summary** includes tools adapted from `CFDS REV 05 MASTER.xlsx` (20 May 2026):
+
+- **Absolute max fuel per FP burn:** uses the workbook aircraft landing-weight lookup, parsed burn and ZFW, its intermediate rounding, and its 164 t cap. Missing values require input; aircraft limits can be overridden.
+- **Duty times:** enter duty-on time in UTC and confirm pilot count and domestic/international rules. Workbook limits are 16/18/20 hours domestically and 16/30/30 internationally for 2/3/4 pilots. Latest out subtracts planned flight time and 50 minutes from latest duty off. Additional loading time defaults to zero. Day offsets are relative to the duty-on date. These are workbook calculations, not a comprehensive duty-rules engine.
+- **Fuel distribution:** reproduces all 287 workbook table rows for 20–163 t, selecting the nearest 500 kg load. Individual tanks are displayed to 0.1 t as in the workbook. Values outside the table are not extrapolated. This reference uses the workbook’s standard-density aircraft configuration.
+- **Fuel density and uplift:** enter measured density in kg/m³, start fuel in tonnes, and uplift volume in litres or US gallons. Density is shared with LM Chit in kg/L. Expected uplift uses measured density. Actual uplift and the greater discrepancy percentage (uplift or total basis) follow the workbook; discrepancies over 3% are flagged.
+
+Calculation and parsing regression checks:
+
+```bash
+node --test tests/*.test.mjs
+```
+
+After deploying an update, existing offline installations may need all app tabs/Home Screen windows closed and reopened online for the new service worker to activate.
