@@ -23,6 +23,19 @@ The app is designed to run on desktop browsers and iPad Safari. It reads the PDF
 5. Review the Summary, Route, and LM Chit tabs.
 6. Use the Show extracted text button on the Upload tab if you need to inspect the raw PDF text.
 
+## Offline Use
+
+1. Open the live app while connected and wait for **App ready for offline use** on the Upload tab.
+2. Upload a flight plan and wait for **Last flight saved on this device**.
+3. On iPad, use Safari's Share menu and **Add to Home Screen**. Open that Home Screen app online once and wait for the same ready messages there.
+4. Turn on Airplane Mode. You can reopen the app, review the last flight, edit PIC and density, or upload another PDF already downloaded to your device.
+
+The latest successfully parsed PDF, extracted text, and manual LM Chit edits are stored on this device. A new successful upload replaces the saved flight. A failed upload keeps the previous saved flight. Dark mode is also remembered.
+
+Weather is the information contained in the uploaded PDF; offline mode does not fetch new weather. Clearing website data or using private browsing can remove the saved flight and offline cache. Browser tabs and Home Screen apps may have separate storage, so prepare offline use in the one you plan to use.
+
+Offline caching is enabled in the production build, not the development server. To test it locally, run `npm run build` followed by `npm run preview`.
+
 ## Live App
 
 The app is deployed with GitHub Pages:

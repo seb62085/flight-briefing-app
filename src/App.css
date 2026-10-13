@@ -183,6 +183,19 @@ h1 {
   font-weight: 700;
 }
 
+.offline-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: #465666;
+}
+
+.dark-mode .offline-status { color: #b7c4cf; }
+
+input:disabled { cursor: wait; opacity: 0.6; }
+
 .text-preview {
   margin-top: 24px;
 }

@@ -1,0 +1,9 @@
+{
+  "name": "Flight Briefing App",
+  "short_name": "Flight Briefing",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6f8",
+  "theme_color": "#17212b"
+}

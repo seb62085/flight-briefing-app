@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.js?url'
 import './App.css'
+import { loadLastFlight, saveLastFlight, saveFlightEdits } from './flightStorage.js'
+import { useOffline } from './useOffline.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
@@ -589,35 +591,86 @@ function App() {
   const [summary, setSummary] = useState(null)
   const [showExtractedText, setShowExtractedText] = useState(false)
   const [activeTab, setActiveTab] = useState('home')
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try { return localStorage.getItem('flight-briefing-theme') === 'dark' }
+    catch { return false }
+  })
   const [density, setDensity] = useState('')
   const [pic, setPic] = useState('')
+  const [restoring, setRestoring] = useState(true)
+  const [reading, setReading] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('')
+  const savedFlightId = useRef(null)
+  const { online, ready, cacheError } = useOffline()
   const cardLinks = getCardLinks(activeTab, summary, pdfText)
+
+  useEffect(() => {
+    try { localStorage.setItem('flight-briefing-theme', isDarkMode ? 'dark' : 'light') }
+    catch { /* The theme toggle still works when browser storage is unavailable. */ }
+  }, [isDarkMode])
+
+  useEffect(() => {
+    let cancelled = false
+    loadLastFlight().then((flight) => {
+      if (cancelled || !flight) return
+      const parsedSummary = parseFlightPlan(flight.pdfText)
+      savedFlightId.current = flight.id
+      setFileName(flight.fileName)
+      setPdfText(flight.pdfText)
+      setSummary(parsedSummary)
+      setPic(flight.pic ?? '')
+      setDensity(flight.density ?? '')
+      setStatus(`Restored ${flight.fileName} (${flight.pageCount} pages).`)
+      setSaveStatus('Last flight saved on this device.')
+    }).catch((error) => {
+      if (!cancelled) {
+        console.error(error)
+        setSaveStatus('Could not restore the saved flight. You can upload a PDF again.')
+      }
+    }).finally(() => {
+      if (!cancelled) setRestoring(false)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  function editChit(field, value) {
+    if (field === 'pic') setPic(value)
+    if (field === 'density') setDensity(value)
+    const id = savedFlightId.current
+    if (!id) return
+    saveFlightEdits(id, { [field]: value }).then(() => {
+      if (savedFlightId.current === id) setSaveStatus('Last flight saved on this device.')
+    }).catch(() => {
+      if (savedFlightId.current === id) setSaveStatus('Could not save your latest edits on this device.')
+    })
+  }
 
   async function handleFileChange(event) {
     const file = event.target.files[0]
 
-    if (!file) {
+    if (!file || reading || restoring) {
       return
     }
 
-    setFileName(file.name)
-    setPdfText('')
-    setSummary(null)
+    setReading(true)
     setShowExtractedText(false)
     setStatus('Reading PDF...')
 
     let extractedText
     let pageCount
+    let loadingTask
 
     try {
       const fileBuffer = await readFileAsArrayBuffer(file)
       const pdfData = new Uint8Array(fileBuffer)
-      const pdf = await runWithPdfWorkerDisabled(() =>
-        pdfjsLib.getDocument({
+      const pdf = await runWithPdfWorkerDisabled(() => {
+        loadingTask = pdfjsLib.getDocument({
           data: pdfData,
-        }).promise,
-      )
+          standardFontDataUrl: `${import.meta.env.BASE_URL}standard_fonts/`,
+          isEvalSupported: false,
+        })
+        return loadingTask.promise
+      })
       const pages = []
       pageCount = pdf.numPages
 
@@ -636,11 +689,16 @@ function App() {
     } catch (error) {
       console.error(error)
       setStatus(getPdfErrorMessage(error))
+      setReading(false)
       return
+    } finally {
+      await loadingTask?.destroy().catch(console.error)
     }
 
+    let parsedSummary
     try {
-      const parsedSummary = parseFlightPlan(extractedText)
+      parsedSummary = parseFlightPlan(extractedText)
+      setFileName(file.name)
       setPdfText(extractedText)
       setSummary(parsedSummary)
       setPic(parsedSummary.fuel?.pic === 'Not found' ? '' : parsedSummary.fuel?.pic ?? '')
@@ -648,6 +706,27 @@ function App() {
     } catch (error) {
       console.error(error)
       setStatus(`Parser failed after reading PDF: ${error?.message ?? 'Unknown parser error'}`)
+      setReading(false)
+      return
+    }
+
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const initialPic = parsedSummary.fuel?.pic === 'Not found' ? '' : parsedSummary.fuel?.pic ?? ''
+    setDensity('')
+    savedFlightId.current = null
+    setSaveStatus('Saving flight on this device...')
+    try {
+      await saveLastFlight({ id, fileName: file.name, pdf: file, pdfText: extractedText,
+        pageCount, pic: initialPic, density: '', savedAt: new Date().toISOString() })
+      savedFlightId.current = id
+      setSaveStatus('Last flight saved on this device.')
+      // Browsers may grant persistent storage to protect saved flights from eviction.
+      navigator.storage?.persist?.().catch(() => {})
+    } catch (error) {
+      console.error(error)
+      setSaveStatus('Flight parsed, but could not be saved on this device. It will not survive closing the app.')
+    } finally {
+      setReading(false)
     }
   }
 
@@ -690,7 +769,7 @@ function App() {
           <section className="tab-panel">
             <label className="upload-box" id="upload-card">
               <span>Choose a PDF flight plan</span>
-              <input type="file" accept="application/pdf" onChange={handleFileChange} />
+              <input type="file" accept="application/pdf" disabled={restoring || reading} onChange={handleFileChange} />
             </label>
 
             {fileName && (
@@ -701,6 +780,12 @@ function App() {
             )}
 
             <p className={summary ? 'status success' : 'status'}>{status}</p>
+            <div className="offline-status" role="status" aria-live="polite">
+              <span>{online ? 'Online' : 'Offline'}</span>
+              <span>{ready ? 'App ready for offline use' : cacheError
+                ? 'Offline setup failed. Reopen online to retry.' : 'Offline setup pending'}</span>
+              <span>{restoring ? 'Restoring last flight...' : saveStatus}</span>
+            </div>
             <p className="app-build">{APP_BUILD}</p>
 
             {pdfText && (
@@ -862,7 +947,8 @@ function App() {
                       <input
                         type="text"
                         value={pic}
-                        onChange={(event) => setPic(event.target.value)}
+                        disabled={reading}
+                        onChange={(event) => editChit('pic', event.target.value)}
                         placeholder="Enter PIC"
                       />
                     </label>
@@ -876,7 +962,8 @@ function App() {
                         type="text"
                         inputMode="decimal"
                         value={density}
-                        onChange={(event) => setDensity(event.target.value)}
+                        disabled={reading}
+                        onChange={(event) => editChit('density', event.target.value)}
                         placeholder="Enter density"
                       />
                     </label>

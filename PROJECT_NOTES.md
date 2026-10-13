@@ -12,6 +12,17 @@ iPad Safari compatibility note: `src/polyfills.js` is loaded from `src/main.jsx`
 
 File upload compatibility note: uploaded PDFs are read through `readFileAsArrayBuffer`. It uses `file.arrayBuffer()` when available and falls back to `FileReader.readAsArrayBuffer(file)` for older iPad/iPhone WebKit versions where `file.arrayBuffer` may be undefined.
 
+## Offline Support
+
+- Production builds generate a content-versioned `sw.js` with `offlineBuild.js`. All local app assets, the PDF worker, and PDF.js standard fonts are cached before the app reports offline readiness.
+- `src/useOffline.js` registers the service worker in production web builds and reports online/offline and cache readiness. Updates wait until existing app windows close to avoid replacing assets during a briefing.
+- `src/flightStorage.js` uses IndexedDB through `idb-keyval`. Only the last successful flight is kept: original PDF Blob, extracted text, page count, filename, saved time, PIC, and density. Restore reparses the text using the current parser.
+- Manual PIC/density edits are written to the saved flight immediately; a failed new upload preserves the previous saved flight. Save errors are shown to the user.
+- Dark/light preference is remembered in localStorage.
+- Test offline use against a production build with `npm run preview`, not the development server.
+- Future Capacitor: bundle the compiled app, use a native-compatible Vite base path, and skip web service worker registration. Keep the storage API boundary so native storage can be added later. Capacitor is not configured yet.
+- Verified 2026-10-13 with Playwright and desktop Chrome at iPad-sized viewport: production service worker install, offline cold restart, original 14.6 MB PDF stored, restored PIC/density, Summary/Route/LM Chit access, failed-upload retention, and full 110-page PDF parsing with network disabled. Real iPad Safari validation remains a user test.
+
 ## Current Deployment
 
 - GitHub repo: `https://github.com/seb62085/flight-briefing-app`
