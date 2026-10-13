@@ -3,32 +3,26 @@
 export const preflightColumns = [
   [
     { id: 'exterior', label: 'Exterior inspection' },
-    { id: 'deice', label: 'De-ice required / ordered', optional: true },
+    { id: 'deice', label: 'De-ice required / ordered' },
     { id: 'main-deck', label: 'Main deck inspection' },
     { id: 'upper-deck', label: 'Upper deck inspection' },
     { id: 'gen-decs', label: 'GEN DECs' },
-    { id: 'permit', label: 'Permit to proceed', optional: true },
+    { id: 'permit', label: 'Permit to proceed' },
     { id: 'track-distance', label: 'Track & distance checked' },
     { id: 'fuel-check', label: 'Fuel check (3%)' },
     { id: 'fuel-balanced', label: 'Fuel load balanced' },
   ],
   [
-    { id: 'pdc', label: 'PDC', optional: true },
+    { id: 'pdc', label: 'PDC' },
     { id: 'tech-log', label: 'Tech log (daily / MELs)' },
     { id: 'mel-ofp', label: 'MELs / DMIs on OFP' },
     { id: 'loadmaster-chit', label: 'Loadmaster chit' },
-    { id: 'notoc', label: 'NOTOC / temperature-controlled cargo', optional: true },
+    { id: 'notoc', label: 'NOTOC / temperature-controlled cargo' },
     { id: 'load-sheet', label: 'Load sheet / software' },
     { id: 'brief-tem', label: 'Briefing / TEM' },
     { id: 'release', label: 'Release received' },
     { id: 'devices', label: 'Devices — flight mode' },
   ],
-]
-export const departureItems = [
-  { id: 'runway-change', label: 'Runway change reviewed', optional: true },
-  { id: 'crosswind', label: 'Crosswind limits' },
-  { id: 'acars-release', label: 'ACARS release' },
-  { id: 'derates', label: 'De-rates reviewed', optional: true },
 ]
 export const oceanicGroups = [
   { id: 'oceanic-preparation', title: 'Oceanic preparation', items: [
@@ -45,15 +39,15 @@ export const oceanicGroups = [
   { id: 'oceanic-entry', title: 'Before oceanic entry', items: [
     { id: 'winds', label: 'Update winds & alternate weather' },
     { id: 'cpdlc', label: 'CPDLC login' },
-    { id: 'clearance', label: 'Obtain NAT clearance / update', optional: true },
+    { id: 'clearance', label: 'Obtain NAT clearance / update' },
     { id: 'waypoints-entry', label: 'Verify waypoints' },
     { id: 'rnp', label: 'Verify RNP setting' },
     { id: 'navigation', label: 'Cross-check VOR / IRS / GPS' },
-    { id: 'lrcs-entry', label: 'LRCS checks (HF), if required', optional: true },
+    { id: 'lrcs-entry', label: 'LRCS checks (HF), if required' },
   ] },
   { id: 'oceanic-after-entry', title: 'Oceanic / exit reminders', items: [
     { id: 'mach-slop', label: 'Mach / SLOP / 123.45 & 121.50 reviewed' },
-    { id: 'squawk', label: '10 minutes — squawk 2000, when applicable', optional: true },
+    { id: 'squawk', label: '10 minutes — squawk 2000, when applicable' },
     { id: 'clear-slop', label: 'Clear SLOP / routing / navigation check' },
   ] },
 ]
@@ -61,6 +55,6 @@ export const oceanicGroups = [
 export function checklistProgress(items, values) {
   return {
     total: items.length,
-    reviewed: items.filter((item) => values[item.id] === 'done' || (item.optional && values[item.id] === 'na')).length,
+    reviewed: items.filter((item) => values[item.id] === 'done').length,
   }
 }

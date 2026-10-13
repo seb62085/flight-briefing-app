@@ -1208,10 +1208,7 @@ input:disabled { cursor: wait; opacity: 0.6; }
 .checklist-item span { overflow-wrap: anywhere; }
 .checklist-item small { display: block; margin-top: 3px; font-weight: 400; font-size: 11px; }
 .checklist-done { border-color: #74b68a; background: #e9f7ed; color: #1c6333; }
-.checklist-skipped { color: #526572; background: #eef2f5; }
-.checklist-na, .checklist-reset, .checklist-reset-confirm button { min-height: 44px; padding: 8px 12px; border: 1px solid #b8c8d2; border-radius: 5px; background: #f5f9fc; color: #17212b; font-weight: 700; cursor: pointer; }
-.checklist-na { padding: 8px; font-size: 12px; }
-.checklist-na[aria-pressed="true"] { background: #d7e3eb; border-color: #6d8596; }
+.checklist-reset, .checklist-reset-confirm button { min-height: 44px; padding: 8px 12px; border: 1px solid #b8c8d2; border-radius: 5px; background: #f5f9fc; color: #17212b; font-weight: 700; cursor: pointer; }
 .checklist-reset { white-space: nowrap; }
 .checklist-save-status { color: #526572; font-size: 12px; margin-bottom: 0; }
 .checklist-reset-confirm { border-top: 1px solid #c7d6df; margin-top: 14px; padding-top: 8px; }
@@ -1221,9 +1218,7 @@ input:disabled { cursor: wait; opacity: 0.6; }
 .checklist-section-header .checks-complete { color: #218744; }
 .dark-mode .checklist-row { background: #1c2d3a; border-color: #526b7d; }
 .dark-mode .checklist-done { background: #143c2a; border-color: #3e8960; color: #9ee4b4; }
-.dark-mode .checklist-skipped { background: #263846; color: #c4d3dd; }
-.dark-mode .checklist-na, .dark-mode .checklist-reset, .dark-mode .checklist-reset-confirm button { background: #263846; color: #edf4f8; border-color: #526b7d; }
-.dark-mode .checklist-na[aria-pressed="true"] { background: #456078; }
+.dark-mode .checklist-reset, .dark-mode .checklist-reset-confirm button { background: #263846; color: #edf4f8; border-color: #526b7d; }
 .dark-mode .checklist-save-status, .dark-mode .checklist-section-header > span { color: #c4d3dd; }
 .dark-mode .checklist-section-header .checks-complete { color: #9ee4b4; }
 @media (max-width: 760px) {

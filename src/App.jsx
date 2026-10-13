@@ -417,7 +417,6 @@ function getCardLinks(activeTab, summary, pdfText) {
 
   if (activeTab === 'checklist') return [
     { id: 'preflight-checklist', label: 'Preflight' },
-    { id: 'departure-checklist', label: 'Departure' },
     { id: 'oceanic-checklist', label: 'Oceanic' },
   ]
 
