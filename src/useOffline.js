@@ -23,7 +23,10 @@ export function useOffline() {
     let cancelled = false
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
       scope: import.meta.env.BASE_URL,
-    }).then(async () => {
+      updateViaCache: 'none',
+    }).then(async (registration) => {
+      // Check for a new release even when this visit was served offline-first.
+      if (navigator.onLine) registration.update().catch(() => {})
       await navigator.serviceWorker.ready
       if (!cancelled) setReady(true)
     }).catch(() => {

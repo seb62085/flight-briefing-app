@@ -92,3 +92,11 @@ After uploading a flight, open **Checklist**. The preflight columns follow the s
 Checklist marks and the oceanic selection are saved with the current flight and restored offline. Disabling oceanic mode keeps its marks for later re-enabling. **Reset checklist** asks for confirmation, clears checklist marks, and preserves the oceanic selection and other briefing inputs. A successful new PDF upload starts a fresh checklist; a failed upload preserves the current flight’s progress.
 
 Summary order is Flight, Fuel Summary, maximum fuel/distribution/density tools, Crew, then Duty Times.
+
+## Recovering from a blank page
+
+Each production release now precaches a uniquely named HTML shell together with its matching JavaScript/CSS. Installation refreshes HTTP-cached resources, and cached static files are matched independently of varying request headers. Online navigation falls back to the network if its cached shell is missing.
+
+If the app’s bundle cannot load, a loading/recovery screen offers **Reload app**. This unregisters only this app’s service worker and removes its offline caches, then reloads online. Saved flights, edits, checklist marks (IndexedDB), and the theme preference (localStorage) are retained.
+
+An older installed release may show a blank page before it can display the new recovery screen. In Chrome, open Developer Tools → Application → Service workers, unregister the worker for this app, then reload with Ctrl+Shift+R. Close other app tabs before restarting. This preserves the saved flight data.
